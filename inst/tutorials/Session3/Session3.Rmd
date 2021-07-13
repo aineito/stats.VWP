@@ -1,0 +1,323 @@
+---
+title       : "Looking at the data"
+subtitle    : "Data from Ito, Pickering & Corley (2018, JML)"
+author      : "Aine Ito"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Packages
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+```
+
+You can view the help page of a loaded package (or its function) by typing the following:
+```{r eval=F, echo=T, message=F}
+?tidyverse  # help page of the 'tidyverse' package
+?read_delim  # help page of the 'read_delim' function
+```
+
+Note: Everything after `#` is a comment (not a command)
+
+## Read data
+The codes below assume that the data files in the 'Data' folder, which is in the folder where your current R script is located. If you have the R script and the data files in the same folder, remove 'Data/'.    
+```{r eval=F, echo=T, message=F}
+fix.window = read_delim("Data/ET_fix_-800_to_0.txt", delim="\t")
+fix.50bin = read_delim("Data/ET_fix.txt", delim="\t")
+```
+
+- `fix.window` data: fixation proportion in a single window from -800 ms to 0 ms relative to the target word onset
+- `fix.50bin` data: fixation proportion in every 50 ms bin from -1000 ms to 1000 ms relative to the target word onset
+
+We will first look at the `fix.window` data.   
+
+Have a look at the first 6 rows:
+```{r eval=T, echo=T, message=F}
+head(fix.window)
+```
+
+Have a look at the data structure:
+```{r eval=T, echo=T, message=F}
+str(fix.window)
+```
+
+Have a look at a summary:
+```{r eval=T, echo=T, message=F}
+summary(fix.window)
+```
+
+You can view the entire data by clicking `fix.window` in the Environment.  
+
+The dataset `fix.window` contains the following information:
+
+- Subject: Subject ID (p-initial = L1 group, j-initial = L2 group)
+- Trial: Trial number
+- allSample: The total number of samples
+- Count: The total number of right-eye samples in the current time bin that fall in the target interest area 
+- FixP: The percentage of the total number of right-eye samples in the current time bin that fall in the target interest area (calculated across all on-screen samples)
+- Condition: Condition (Targ = Target, Eng = English competitor, Jap = Japanese competitor, Unr = Unrelated)
+- Item: Item ID
+- Lang: Language group (L1, L2)
+
+
+#### **Q1:** 
+```{r quiz1, echo=F}
+question_checkbox("Which variables need to be a factor (categorical variable)? Select all that apply:",
+  answer("Subject", correct=T),
+  answer("Trial"),
+  answer("allSample"),
+  answer("Count"),
+  answer("FixP"),
+  answer("Condition", correct=T),
+  answer("Item", correct=T),
+  answer("Lang", correct=T),
+  allow_retry = T
+)
+```
+
+## Modify data
+
+To change `Subject`, `Condition`, `Item` and `Lang` to factor, you can run the following:
+```{r eval=T, echo=T, message=F}
+fix.window = fix.window %>% mutate_at(vars(Subject, Condition, Item, Lang), as.factor)
+```
+
+Note: a shortcut for `%>%` is 'Ctrl/Cmd + Shift + m'
+
+#### **Q2:** 
+1. Change `Item` to character and then to numeric. 
+2. Check the summary of the data.  
+
+Click `Run Code` to test your code. Click `Solution` to see the solution.  
+Hint: Use `as.character` and `as.numeric`
+
+```{r as_factor, exercise = TRUE}
+
+```
+
+```{r as_factor-solution}
+fix.window = fix.window %>% mutate_at(vars(Item), as.character) %>% mutate_at(vars(Item), as.numeric)
+summary(fix.window)
+```
+
+---
+
+Let's look at the `Condition` labels.
+```{r eval=T, echo=T, message=F}
+summary(fix.window$Condition)
+```
+
+The labels are ordered alphabetically.  
+Let's change this to `Targ`, `Eng`, `Jap` and `Unr`.
+```{r eval=T, echo=T, message=F}
+fix.window = fix.window %>% mutate(Condition = fct_relevel(Condition,c('Targ','Eng','Jap','Unr')))
+```
+
+Note: `mutate` creates a new variable or modifies an existing variable
+      `mutate_at` modifys variables selected with a character vector or vars()
+
+Now, the data summary should look like this:
+```{r eval=T, echo=T, message=F}
+summary(fix.window)
+```
+
+## Subset data (base R)
+
+There are different ways to subset data in R. We will first look at subsetting commands using base R.  
+
+To get the data from the 3rd row and 2nd column, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window[3,2]
+```
+
+Have a look at the first 3 rows of the data to see if the above output matches.
+```{r eval=T, echo=T, message=F}
+head(fix.window, n=3)
+```
+
+To get the data from the 1st row, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window[1,]
+```
+
+To get the data from all but the 1st row, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window[-1,]
+```
+
+To get the data from the 1st and 2nd columns, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window[,c(1,2)]
+```
+
+You can use column names for subsetting like this:
+```{r eval=T, echo=T, message=F}
+fix.window[3,c('Subject','Trial')]
+```
+
+You can select the data that meet certain conditions.  
+For example, to select only the data where `Subject` column is 'p2':  
+```{r eval=T, echo=T, message=F}
+fix.window[fix.window$Subject == 'p2',]
+```
+
+**Quick Q:** What is the difference between `=` and `==`?
+
+To select only the data where `Subject` column is 'p2', 'j2' or 'j7':
+```{r eval=T, echo=T, message=F}
+fix.window[fix.window$Subject %in% c('p2','j2','j4'),]
+```
+
+
+#### **Q3:** 
+1. Select only the data where `Subject` column is 'j2' or `Item` column is 10
+2. Select only the data where `Trial` is 5 and `Lang` is 'L1'
+
+Click `Run Code` to test your code. Click `Solution` to see the solution.  
+Hint: Use `|` for OR and `&` for AND
+
+```{r select_data, exercise = TRUE}
+
+```
+
+```{r select_data-solution}
+fix.window[fix.window$Subject=='j2'|fix.window$Item==10,] # Q3.1
+
+fix.window[fix.window$Trial==5&fix.window$Lang=='L1',] # Q3.2
+
+```
+
+## Subset data (tidyverse)
+
+Now we will look at subsetting commands using the `tidyverse` package.  
+
+To select the first 3 rows, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% slice(1, 2, 3)
+```
+
+To select data where `FixP` >.9, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% filter(FixP > .9)
+```
+
+To select data from the columns `Condition` and `FixP`, you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(Condition,FixP)
+```
+
+To select a range of consective variables (e.g., from `Subject` and `FixP`), you can run this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(Subject:FixP)
+```
+
+You can exclude the above data by running this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(!(Subject:FixP))
+```
+
+You can also select columns by a character match. The command below will select columns whose name starts with 'C'
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(starts_with('C'))
+```
+
+You can select the data from all but the column `Lang` by running this:
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(-Lang)
+```
+
+The advantage of using this method is that you can apply multiple commands to the same data in one go.  
+For example:
+```{r eval=T, echo=T, message=F}
+fix.window %>% select(Condition,FixP) %>% filter(FixP > .9)
+```
+
+
+#### **Q4:** 
+1. Select the data where `Subject` column is 'j2', 'p2' or 'p9' and `Condition` is 'Targ'.
+2. Select the above data and then drop the column `Condition`
+
+Click `Run Code` to test your code. Click `Solution` to see the solution.  
+
+```{r select_data_tidyverse, exercise = TRUE}
+
+```
+
+```{r select_data_tidyverse-solution}
+fix.window %>% filter(Subject %in% c('j2','p2','p9'), Condition == 'Targ') # Q4.1
+
+fix.window %>% filter(Subject %in% c('j2','p2','p9'), Condition == 'Targ') %>% select(-Condition) # Q4.2
+
+```
+
+Note: You can make a line break after (but not before) `%>%`.  
+
+## Plot data
+First, let's summarise the data for plotting.  
+To compute mean, SD, SE, and 95% CI for each condition, you can use `summarySE` function from `Rmisc` package:
+
+```{r eval=T, echo=T, message=F}
+summarySE(fix.window, measurevar = 'FixP', groupvars = 'Condition')
+```
+
+
+To compute mean, SD, SE, and 95% CI for each condition and for each `Lang` group, you can run this:
+```{r eval=T, echo=T, message=F}
+summarySE(fix.window, measurevar = 'FixP', groupvars = c('Lang','Condition'))
+```
+
+
+Let's save the second summary as `fix.window.summary`:
+```{r eval=T, echo=T, message=F}
+fix.window.summary = summarySE(fix.window, measurevar = 'FixP', groupvars = c('Lang','Condition'))
+```
+
+
+Now, we can use this summary to plot a graph.  
+Let's plot a simple bar graph using `ggplot` from `ggplot2` package.  
+The command below will plot a bar graph showing the mean `FixP` (on y-axis) for each `Condition` (on x-axis) and each `Lang` group. Different colours are assigned for each condition using the `fill = Condition` command. 
+```{r eval=T, echo=T, message=F}
+ggplot(fix.window.summary, aes(x = Condition, y = FixP, fill = Condition)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Lang) 
+```
+
+
+We can add errorbars representing 95% CIs using `geom_errorbar`. The `width` in `geom_errorbar` specifies the width of the error bar.  
+We can use `ggtitle` to add a title.
+```{r eval=T, echo=T, message=F}
+ggplot(fix.window.summary, aes(x = Condition, y = FixP, fill = Condition)) +
+  ggtitle("Fixation proportion with 95% CI") +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin=FixP-ci, ymax=FixP+ci), width=.3) +
+  facet_wrap(~Lang) 
+```
+
+
+#### **Q5:** 
+Plot a bar graph showing the mean `FixP` (on y-axis) with errorbars representing ±1SE for each `Condition` (on x-axis) just for L1 speakers. Include the title "L1 speakers" in the plot.
+
+Click `Run Code` to test your code. Click `Solution` to see the solution.  
+
+```{r plot_bargraph_L1, exercise = TRUE}
+
+```
+
+```{r plot_bargraph_L1-solution}
+ggplot(fix.window.summary[fix.window.summary$Lang=='L1',], aes(x = Condition, y = FixP, fill = Condition)) +
+  ggtitle("L1 speakers") +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin=FixP-se, ymax=FixP+se), width=.3)
+
+```
+
+You can customise many more things. Take a look at [this website](http://www.cookbook-r.com/Graphs/).  
+
+
