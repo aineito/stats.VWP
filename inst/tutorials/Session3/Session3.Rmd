@@ -320,4 +320,24 @@ ggplot(fix.window.summary[fix.window.summary$Lang=='L1',], aes(x = Condition, y 
 
 You can customise many more things. Take a look at [this website](http://www.cookbook-r.com/Graphs/).  
 
+## Time-course data
+
+Now, let's look at the `fix.50bin` data.  
+
+This dataset contains the following information:
+
+- Subject: Subject ID (p-initial = L1 group, j-initial = L2 group)
+- Trial: Trial number
+- Bin: time bin ID
+- Time: time relative to the target word onset (time 50 contains the data from 50 ms to 99 ms)
+- allSample: The total number of samples
+- Count: The total number of right-eye samples in the current time bin that fall in the target interest area 
+- Condition: Condition (Targ = Target, Eng = English competitor, Jap = Japanese competitor, Unr = Unrelated)
+- Item: Item ID
+- Lang: Language group (L1, L2)
+- FixP: The percentage of the total number of right-eye samples in the current time bin that fall in the target interest area (calculated across all on-screen samples)
+- elogFix: empirical logit (for more details, see [here](https://talklab.psy.gla.ac.uk/tvw/elogit-wt.html>))
+
+
+
 
