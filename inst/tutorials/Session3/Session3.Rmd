@@ -18,7 +18,6 @@ require(learnr)
 require(Rmisc)
 require(tidyverse)
 require(ggplot2)
-require(remotes)
 ```
 
 You can view the help page of a loaded package (or its function) by typing the following:
@@ -39,7 +38,7 @@ require(stats.VWP)
 ```
 
 ## Read data
-The codes below assume that the data files in the 'Data' folder, which is in the folder where your current R script is located. If you have the R script and the data files in the same folder, remove 'Data/'.    
+The codes below assume that the data files are in the 'Data' folder, which is in the folder where your current R script is located. If you have the R script and the data files in the same folder, remove 'Data/'.    
 ```{r eval=F, echo=T, message=F}
 fix.window.raw = read_delim("Data/ET_fix_-800_to_0.txt", delim="\t")
 fix.50bin.raw = read_delim("Data/ET_fix.txt", delim="\t")
@@ -60,7 +59,7 @@ Have a look at the data structure:
 str(fix.window.raw)
 ```
 
-Have a look at a summary:
+Have a look at the summary:
 ```{r eval=T, echo=T, message=F}
 summary(fix.window.raw)
 ```
@@ -133,7 +132,7 @@ fix.window.raw = fix.window.raw %>% mutate(Condition = fct_relevel(Condition,c('
 ```
 
 Note: `mutate` creates a new variable or modifies an existing variable
-      `mutate_at` modifys variables selected with a character vector or vars()
+      `mutate_at` modifies variables selected with a character vector or vars()
 
 Now, the data summary should look like this:
 ```{r eval=T, echo=T, message=F}
@@ -225,7 +224,7 @@ To select data from the columns `Condition` and `FixP`, you can run this:
 fix.window.raw %>% select(Condition,FixP)
 ```
 
-To select a range of consective variables (e.g., from `Subject` and `FixP`), you can run this:
+To select a range of consecutive variables (e.g., from `Subject` and `FixP`), you can run this:
 ```{r eval=T, echo=T, message=F}
 fix.window.raw %>% select(Subject:FixP)
 ```
@@ -318,7 +317,11 @@ Plot a bar graph showing the mean `FixP` (on y-axis) with error bars representin
 
 Click `Run Code` to test your code. Click `Solution` to see the solution.  
 
-```{r plot_bargraph_L1, exercise = TRUE}
+```{r prepare-plot_bargraph_L1, include = FALSE}
+fix.window.raw.summary = summarySE(fix.window.raw, measurevar = 'FixP', groupvars = c('Lang','Condition'))
+```
+
+```{r plot_bargraph_L1, exercise = TRUE, exercise.setup = "prepare-plot_bargraph_L1"}
 
 ```
 
@@ -441,7 +444,11 @@ ggplot(fix.50bin.summary) +
 
 Click `Run Code` to test your code. Click `Solution` to see the solution.  
 
-```{r plot_time_course, exercise = TRUE}
+```{r prepare_plot_time_course, include = FALSE}
+fix.50bin.summary = summarySE(fix.50bin, measurevar = 'FixP', groupvars = c('Lang','Condition','Time'))
+```
+
+```{r plot_time_course, exercise = TRUE, exercise.setup = "prepare_plot_time_course"}
 
 ```
 
