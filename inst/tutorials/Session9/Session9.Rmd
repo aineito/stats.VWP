@@ -1,0 +1,197 @@
+---
+title       : "Cluster-based permutation analysis"
+subtitle    : "Data from Ito, Pickering & Corley (2018, JML)"
+author      : "Aine Ito"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Packages
+
+Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+require(lme4)
+require(stats.VWP)
+```
+
+This is optional: If you run command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the latter format, skip the command below.
+```{r eval=T, echo=T, message=F}
+options(scipen=999)
+```
+
+## Look at the data
+We will use `fix.50bin` data in the `stats.VWP` package for this tutorial.  
+Let's look at the summary.
+
+```{r eval=T, echo=T, message=F}
+summary(fix.50bin)
+```
+
+We will use empirical logit 'elogFix' = ` log((ET.dat$Count+0.01)/(ET.dat$allSample-ET.dat$Count+0.01))` as a dependent variable.    
+
+To look at the details of the variables, see the help page.
+```{r eval=T, echo=T, message=F}
+?fix.50bin
+```
+
+## Functions
+
+First, we will make functions we need for the analysis.  
+
+We will set the number of permutation `nmc` to 1000.  
+
+Note: The `L` after the number forces R to treat the number as integer (instead of the default 'double', i.e., double precision floating point number). 
+
+```{r eval=T, echo=T, message=F}
+nmc = 1000L  
+```
+
+This is the function to get clusters:  
+```{r eval=T, echo=T, message=F}
+getClust <- function(x) {
+  ff <- x %>% mutate(cl=(p<.05)*sign(F))
+  ff.runs <- rle(ff$cl)
+  nruns <- length(ff.runs$lengths)
+  clust.ix <- which(ff.runs$values!=0)
+  if (length(clust.ix)) {
+    res <- lapply(clust.ix, function(ix) {
+      if (ix>1) {
+        t0 <- sum(ff.runs$length[1:(ix-1)]) + 1
+      } else {
+        t0 <- 1
+      }
+      t1 <- t0 + ff.runs$lengths[ix] - 1
+      csum <- sum(ff$F[t0:t1])
+      data.frame(t0=t0, t1=t1, csum=csum)
+    })
+    res <- do.call("rbind", res)
+  } else { # do something for zero case
+    res <- data.frame(t0=NA, t1=NA, csum=0)
+  }
+  res
+}
+```
+
+This performs a t-test: 
+```{r eval=T, echo=T, message=F}
+ttest1 <- function(x) {
+  lvls <- as.character(unique(x$condition2))
+  ff <- x %>% 
+    spread(condition2, elogFix)
+  vec <- ff[[lvls[1]]] - ff[[lvls[2]]]
+  vmean <- mean(vec)
+  serr <- sd(vec)/sqrt(length(vec))
+  tobs <- vmean / serr
+  data_frame(tobs=tobs, pval=2*(1-pt(abs(tobs), 14)))    
+}
+```
+
+Prepare for the permutation: 
+```{r eval=T, echo=T, message=F}
+flip1 <- function(x) {
+  xx <- mutate(x, conditionNew=condition2)
+  if (sample(c(TRUE, FALSE), 1)) {
+    xx$conditionNew <- rev(xx$conditionNew)
+  } else {}
+  return(xx)
+}
+```
+
+Permute: 
+```{r eval=T, echo=T, message=F}
+permuteOnce1 <- function(x, unitcond) {
+  unitcond %>% group_by(UnitID) %>%
+    do(flip1(.)) %>% ungroup() %>%
+    inner_join(x, by=c("UnitID", "condition2")) %>%
+    select(-condition2) %>% rename(condition2=conditionNew)
+}
+```
+
+Generic: do one permutation run: 
+```{r eval=T, echo=T, message=F}
+do_once <- function(x, itemcond) {
+  clust <- permuteOnce1(x, itemcond) %>%
+    group_by(Time) %>% do(ttest1(.)) %>%
+    rename(F=tobs, p=pval) %>%
+    getClust()
+  return(abs(max(clust$csum)))
+}
+```
+
+Get p-values for each cluster:
+```{r eval=T, echo=T, message=F}
+get_clustp <- function(orig, nhd) {
+  pval <- function(x) {
+    data_frame(p=sum(abs(c(x$csum, nhd))>=abs(x$csum))/(length(nhd)+1)) # p-value =  the proportion of permutations that resulted in a larger test statistic than the observed one
+  }
+  orig$p <- orig %>% rowwise() %>% do(pval(.)) %>% `[[`("p")
+  return(orig)
+}
+```
+
+
+
+## Analysis
+
+The analysis is based on t-test. We will run both by-item and by-subject analyses.  
+
+#### By-item analysis
+
+Select the group to analyse. When you analyse the data from L2 speakers, you can simply change `L1` to `L2` and run the same script.  
+```{r eval=T, echo=T, message=F}
+GROUP = 'L1'
+```
+
+Aggregate data for t-tests:  
+```{r eval=T, echo=T, message=F}
+dat_item =  ET.dat %>% filter(Lang==GROUP) %>% 
+  group_by(Item,Condition,Time) %>% summarise(elogFix=mean(elogFix,na.rm=T)) %>% droplevels()
+```
+
+Function to run the analysis:  
+```{r eval=T, echo=T, message=F}
+by.item.analysis = function(COND) {
+  dat_1 = dat_item %>% filter(Condition%in%COND) %>%
+    group_by(UnitID=Item, Condition, Time)
+  
+  dat_p2 <- dat_1 %>%
+    mutate(condition2=Condition) %>%
+    group_by(UnitID, condition2, Time) %>%
+    summarize(elogFix=mean(elogFix)) %>% ungroup() %>%
+    arrange(UnitID, Time, condition2)
+  
+  itemcond <- dat_p2 %>%
+    select(UnitID, condition2) %>%
+    distinct()
+  
+  clust_orig <- dat_p2 %>% group_by(Time) %>%
+    do(ttest1(.)) %>% rename(F=tobs, p=pval) %>%
+    getClust()
+  
+  nhd <- replicate(nmc, do_once(dat_p2, itemcond))
+  
+  clust_orig <- get_clustp(clust_orig, nhd)
+  print(clust_orig)
+  
+  # save the results with today's date
+  saveRDS(clust_orig, file=paste0(GROUP,'_',paste0(substr(COND,1,4),collapse="_vs_"),"_by_item_",substr(date(),21,24),substr(date(),5,7),substr(date(),9,10),".rds"))
+}
+```
+
+Specify the conditions for the analysis (which conditions you want to compare) to run the analysis.  
+
+Let's try comparing the Target condition vs. the Unrelated condition here.  
+```{r eval=F, echo=T, message=F, warning=F}
+by.item.analysis(c("Targ","Unr"))
+```
+
