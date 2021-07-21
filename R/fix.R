@@ -38,8 +38,6 @@
 #' 
 #' Trial: trial number
 #' 
-#' Bin: bin index
-#' 
 #' Time: time relative to the target word onset (ms)
 #' 
 #' allSample: the sum of all samples in the corresponding time bin
@@ -156,8 +154,6 @@
 #' Subject: subject ID
 #' 
 #' Trial: trial number
-#' 
-#' Bin: bin index
 #' 
 #' Time: time relative to the target word onset (ms)
 #' 
