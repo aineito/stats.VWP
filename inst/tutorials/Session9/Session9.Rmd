@@ -37,11 +37,19 @@ Let's look at the summary.
 summary(fix.50bin)
 ```
 
-We will use empirical logit 'elogFix' = ` log((ET.dat$Count+0.01)/(ET.dat$allSample-ET.dat$Count+0.01))` as a dependent variable.    
-
 To look at the details of the variables, see the help page.
 ```{r eval=T, echo=T, message=F}
 ?fix.50bin
+```
+
+We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent variable.  
+
+The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
+
+For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+
+```{r eval=T, echo=T, message=F}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
 ```
 
 ## Functions
@@ -117,7 +125,7 @@ permuteOnce1 <- function(x, unitcond) {
 }
 ```
 
-Generic: do one permutation run: 
+(Generic) Do one permutation run: 
 ```{r eval=T, echo=T, message=F}
 do_once <- function(x, itemcond) {
   clust <- permuteOnce1(x, itemcond) %>%
@@ -140,7 +148,6 @@ get_clustp <- function(orig, nhd) {
 ```
 
 
-
 ## Analysis
 
 The analysis is based on t-test. We will run both by-item and by-subject analyses.  
@@ -154,7 +161,7 @@ GROUP = 'L1'
 
 Aggregate data for t-tests:  
 ```{r eval=T, echo=T, message=F}
-dat_item =  ET.dat %>% filter(Lang==GROUP) %>% 
+dat_item =  fix.50bin %>% filter(Lang==GROUP) %>% 
   group_by(Item,Condition,Time) %>% summarise(elogFix=mean(elogFix,na.rm=T)) %>% droplevels()
 ```
 
