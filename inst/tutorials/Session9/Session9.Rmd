@@ -269,7 +269,7 @@ question_checkbox("Given the above consideration, which of the following stateme
 ```
 
 
-#### **Homework** 
+## Homework
 
 1. Repeat the analysis with 1000 permutations (instead of 50). Run a by-item analysis testing the effect of condition (Target vs. Unrelated) with the same number of permutations.
 

@@ -277,7 +277,7 @@ In some cases the model comparison is going to be enough, but for key findings, 
 
 See [here](https://dmirman.github.io/GCA/TargetFix_example.html) for an example.  
 
-#### **Homework** 
+## Homework
 
 1. Identify the best model structure and justify why it is the best model. (Note: In this tutorial, we used the simple model without random slopes, which is probably not the best model.)  
 
