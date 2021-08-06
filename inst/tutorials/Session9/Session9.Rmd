@@ -26,8 +26,7 @@ require(stats.VWP)
 For the cluster-based permutation analysis, we will use `exchanger` and `clusterperm` packages.  
 Install the packages using the commands below. (If you already have installed them, you can skip this step.)  
 ```{r eval=F, echo=T, message=F}
-devtools::install_github("dalejbarr/exchangr")
-devtools::install_github("dalejbarr/clusterperm")
+devtools::install_github(c("dalejbarr/exchangr", "dalejbarr/clusterperm"))
 ```
 
 Load the `exchanger` and `clusterperm` packages.  
@@ -36,7 +35,7 @@ require(exchangr)
 require(clusterperm)
 ```
 
-This is optional: If you run command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
 If you like the latter format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
@@ -96,7 +95,7 @@ fix.plot
 
 Before we run the cluster-based permutation analysis, let's look at what we get if we run multiple tests (the same test for each time bin).  
 
-Here, we'll run a by-subject analysis. For that, we will create by-subject summary of the data.  
+Here, we'll run a by-subject analysis. For that, we will create a by-subject summary of the data.  
 For a by-item analysis, you will just need to replace `Subject` with `Item.`  
 
 ```{r eval=T, echo=T, message=F}
@@ -160,7 +159,7 @@ Targ.Unr.L2.uncorrected %>% filter(p_bonf < .05)
 
 ## Cluster-based permutation analysis
 
-Detect clusters and calculate mass statistics  
+Detect clusters and calculate mass statistics: 
 ```{r eval=T, echo=T, message=F}
 (orig.L1.TU = detect_clusters_by_effect(Targ.Unr.L1.uncorrected, effect, Time, stat, p) )
 ```
@@ -195,7 +194,7 @@ We will do the same for the L2 group data.
 (dat.L2.TU = nest(fix.50bin.subj.summary[fix.50bin.subj.summary$Lang=='L2'&fix.50bin.subj.summary$Condition %in% c('Targ','Unr'),c('Subject','Condition','Time','elogFix')], -Subject, -Condition) )
 ```
 
-Now we generate permutation null hypothesis distributions for `Condition` 
+Now we will generate permutation null hypothesis distributions for `Condition` 
 We will set the number of permutation (monte carlo runs) `nmc` to 50 in the tutorial (to save time), but in reality, you should set it to a larger value (1000 or 2000).  
 Note: The `L` after the number forces R to treat the number as integer (instead of the default 'double', i.e., double precision floating point number). 
 
@@ -234,7 +233,7 @@ results.L1.TU = results.L1.TU %>% mutate(Lang='L1')
 results.L2.TU = results.L2.TU %>% mutate(Lang='L2')
 ```
 
-Merge the two files
+Merge the two files:
 ```{r eval=T, echo=T, message=F}
 (results.L1L2.TU = results.L1.TU %>% bind_rows(results.L2.TU) )
 ```

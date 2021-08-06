@@ -23,7 +23,7 @@ require(boot)
 require(stats.VWP)
 ```
 
-This is optional: If you run command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
 If you like the latter format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)

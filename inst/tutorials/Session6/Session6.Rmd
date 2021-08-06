@@ -30,7 +30,7 @@ remotes::install_github("dmirman/gazer")
 require(gazer)
 ```
 
-This is optional: If you run command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
 If you like the latter format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
@@ -188,7 +188,7 @@ contrasts(fix.binom.pred$Condition)
 Now, if we look at the 2-way interactions of `Condition` by `poly1` and `Condition` by `poly2`, the p-value for `poly1:Condition1` is significant.  
 This suggests that the effect of condition (Target vs. Unrelated) interacted with the linear term.  
 If you look at the graph, you can see that the fixation proportion for the Target condition increased over time, whereas the fixation proportion for the Unrelated condition stayed around 0.2 (imagine a linear line on these plots).  
-This time-course difference was similar in L1 and L2 groups (no 3-way interaction see `poly1:Condition1:Lang1`).  
+This time-course difference was similar in L1 and L2 groups (no 3-way interaction, see `poly1:Condition1:Lang1`).  
 
 ---
 
@@ -230,7 +230,7 @@ summary(fix.binom.pred.m.cond.lang.linear)
 ```
 
 Let's plot the model fit again.  
-We will ad the model fit with a new name `mfit_linear`.  
+We will add the model fit with a new name `mfit_linear`.  
 ```{r eval=T, echo=T, message=F}
 fix.binom.pred$mfit_linear = fitted(fix.binom.pred.m.cond.lang.linear)
 
@@ -251,7 +251,7 @@ If you compare this graph with the graph plotting a model fit for the model with
 **Quick Q:** How can you tell?  
 
 Let's do a model comparison to doublecheck.  
-We can use `anova()` function to compare two (or more) models.  
+We can use the `anova()` function to compare two (or more) models.  
 ```{r eval=T, echo=T, message=F}
 anova(fix.binom.pred.m.cond.lang, fix.binom.pred.m.cond.lang.linear)
 ```
@@ -261,7 +261,7 @@ The model comparison result suggests that the model with linear and quadratic te
 
 ## Report the results
 
-Once you get the results from the best model, you can to write a summary of the findings.  
+Once you get the results from the best model, you can write a summary of the findings.  
 
 
 There are two rules of thumb for reporting growth curve analysis results (from [Dan Mirman's website](https://www.danmirman.org/gca)):
