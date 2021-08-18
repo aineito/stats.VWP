@@ -89,7 +89,7 @@ Print the plot:
 p1
 ```
 
-## Prepare data
+## Prepare the data
 
 We will select the time window for the analysis. The time window should be large enough to capture a divergence point, but it should not include time bins with very few observations. It may be impossible to perform a statistical analysis (e.g., t-test) on such data. We will choose the time from -800 ms relative to the target word onset.  
 
@@ -175,7 +175,7 @@ bootres_L1L2 = boot::boot(
   R = Niter)  # number of iterations          
 ```
 
-As this analysis takes time, you may want to save the results so that you can access the results without running the analysis again. You can use the `save` command for that. The command below will save the data `bootres_L1L2` under the file name "bootres_L1L2.rds".  
+As this analysis takes time, you may want to save the results so that you can access them without running the analysis again. You can use the `save` command for that. The command below will save the data `bootres_L1L2` under the file name "bootres_L1L2.rds".  
 
 ```{r eval=F, echo=T, message=F}
 save(bootres_L1L2, file="bootres_L1L2.rds")
