@@ -311,4 +311,3 @@ Now you see why?
 
 For both tasks, remember to report the model structure (what you included in the final model).  
 If you dropped some variables, make sure to report which variables you dropped and how you decided to drop them.  
-
