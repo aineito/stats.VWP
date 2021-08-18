@@ -215,7 +215,7 @@ If the model comparison suggests a non-significant difference between the two mo
 - **AIC** (Akaike's information criterion) is basically a goodness-of-fit measure that is corrected for model complexity (i.e., it takes into account how many parameters have been estimated).  
 - **BIC** (Schwarz's Baysian criterion) is comparable to the AIC. It is slightly more conservative (i.e., it corrests more harshly for the number of parameters being estimated).  
 Neither the AIC or BIC are intrinsically interpretable (i.e., it's not meaningful to tale about their values being large or small per se), but they are useful as a way of comparing models. **Smaller values mean better-fitting models.**  
-- **Log-likelihood** is also used to assess the fir of the model. Again, the smaller the value, the better the model fit.  
+- **Log-likelihood** is also used to assess the fit of the model. Again, the smaller the value, the better the model fit.  
 - The **deviance** is given by: `deviance = -2 x log-likelihood`. It is sometimes referred to as **-2LL** because of the way it is calculated.  
 
 
@@ -223,7 +223,7 @@ Neither the AIC or BIC are intrinsically interpretable (i.e., it's not meaningfu
 You can build a GLMM in a pretty similar way. We will use the `glmer` function instead of `lmer` function. We will run the model for the L1 group first.  
 
 The model below has the maximal random-effects structure (by-subject and by-item random slope and intercept for `Condition`).  
-Again, make sure that both `Subject` and `Item` are treated as a factor.  
+Again, make sure that both `Subject` and `Item` are treated as factors.  
 
 For GLMM, we need to specify `family`. Here, we have a binomial variable, so we will add `family=binomial`.
 We will save the results as `glmm.L1`.
