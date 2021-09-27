@@ -19,7 +19,6 @@ require(learnr)
 require(Rmisc)
 require(tidyverse)
 require(ggplot2)
-require(lme4)
 require(stats.VWP)
 ```
 
@@ -243,7 +242,6 @@ We will add a horizontal line at the bottom of the plot indicating a significant
 
 ```{r eval=T, echo=T, message=F}
 fix.plot + geom_errorbarh(data=results.L1L2.TU, aes(xmin=b0, xmax=b1, y=0), colour='red', height = 0, size=3, alpha=.4, show.legend=F)
-  
 ```
 
 

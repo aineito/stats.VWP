@@ -197,7 +197,7 @@ The onsets from the original data are stored here:
 bootres_L1L2$t0
 ```
 
-The bootstrapped onsets computed after each resample are stored here, with  each column corresponding to the index in the bootstrap function:
+The bootstrapped onsets computed after each resample are stored here, with each column corresponding to the index in the bootstrap function:
 ```{r eval=T, echo=T, message=F}
 head(bootres_L1L2$t)
 ```

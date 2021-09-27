@@ -41,15 +41,17 @@
 #' 
 #' Count: right-eye sample count on the critical object
 #' 
+#' BlinkCount: The total number of right-eye samples that were in a blink event
+#' 
+#' OffScreenCount: The total number of right-eye samples that fall outside of the display boundary (off screen)
+#' 
+#' FixP: Fixation proportion
+#'  
 #' Condition: condition label (Targ=target, Eng=English competitor, Jap=Japanese competitor, Unr=unrelated)
 #' 
 #' Item: item ID
 #' 
 #' Lang: language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
-#' 
-#' FixP: Fixation proportion
-#' 
-#' elogFix: empirical logit for each bin
 #' 
 "fix.50bin"
 
@@ -150,15 +152,17 @@
 #' 
 #' Count: right-eye sample count on the critical object
 #' 
+#' BlinkCount: The total number of right-eye samples that were in a blink event
+#' 
+#' OffScreenCount: The total number of right-eye samples that fall outside of the display boundary (off screen)
+#' 
+#' FixP: Fixation proportion
+#'  
 #' Condition: condition label (Targ=target, Eng=English competitor, Jap=Japanese competitor, Unr=unrelated)
 #' 
 #' Item: item ID
 #' 
 #' Lang: language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
-#' 
-#' FixP: Fixation proportion
-#' 
-#' elogFix: empirical logit for each bin
 #' 
 "fix.50bin.raw"
 
