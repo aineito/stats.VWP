@@ -116,7 +116,7 @@ boot_L1L2 = function(original_data, resample_indices){
   
   prog$tick()$print() # update progress bar
   
-  dat = dat_resample %>% # shuffle the condition labels
+  dat = dat_resample %>% 
     group_by(Subject, Condition, Time, Lang) %>%
     dplyr::summarise(MeanFixation = mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) # average fixation proportion by subject, condition and time, keeping group
   
