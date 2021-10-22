@@ -126,7 +126,12 @@ Run the model for the L2 group with the maximal random-effects structure.
 Save it as `lme.L2` and print the model summary. 
 
 Click `Run Code` to test your code. Click `Solution` to see the solution.  
-```{r L2_LME, exercise = TRUE}
+```{r prepare_L2_LME, include = FALSE}
+require(tidyverse)
+fix.window = fix.window %>% mutate(elogFix = log((Count+.5)/(allSample-Count+.5)))
+```
+
+```{r L2_LME, exercise = TRUE, exercise.setup = "prepare_L2_LME"}
 
 ```
 
