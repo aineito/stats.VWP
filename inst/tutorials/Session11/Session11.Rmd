@@ -1,0 +1,288 @@
+---
+title       : "Divergence point analysis"
+subtitle    : "Data from Ito, Pickering & Corley (2018, JML)"
+author      : "Aine Ito"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Packages
+
+Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+require(lme4)
+require(boot)
+require(stats.VWP)
+```
+
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the latter format, skip the command below.
+```{r eval=T, echo=T, message=F}
+options(scipen=999)
+```
+
+## Look at the data
+We will use `fix.binom.20bin` data in the `stats.VWP` package for this tutorial.  
+Let's look at the summary.
+
+```{r eval=T, echo=T, message=F}
+summary(fix.binom.20bin)
+```
+
+To look at the details of the variables, see the help page.
+```{r eval=T, echo=T, message=F}
+?fix.binom.20bin
+```
+
+We will compare Target vs. Unrelated conditions in this analysis, so we will subset the data first and name the data set as `fix.binom.20bin.TU`.  
+```{r eval=T, echo=T, message=F}
+fix.binom.20bin.TU = fix.binom.20bin %>% filter(Condition%in%c('Targ','Unr')) %>% droplevels()
+```
+
+Let's take a look at the summary.
+```{r eval=T, echo=T, message=F}
+summary(fix.binom.20bin.TU)
+```
+
+Now, we will plot a time-course graph using the 'Count' variable. 
+
+We will compute the means for each group, condition and time bin first.  
+```{r eval=T, echo=T, message=F}
+fix.binom.20bin.TU.summary = summarySE(fix.binom.20bin.TU, measurevar = 'Count', groupvars = c('Lang','Condition','Time'))
+```
+
+We will make a plot and save the plot as `p1`, because we will add the results from the analysis later.
+
+```{r eval=T, echo=T, message=F}
+p1 = ggplot() +
+  theme_light() +
+  xlab("Time relative to target word onset (ms)") +
+  ylab("Fixation proportion") +
+  
+  geom_line(data=fix.binom.20bin.TU.summary, aes(x=Time,y=Count,group=Condition,colour=Condition,lty=Condition), lwd=1) +
+  geom_ribbon(data=fix.binom.20bin.TU.summary, aes(x=Time,ymin=Count-se,ymax=Count+se,color=Condition,fill=Condition),size=.2,alpha=.3,lty="dashed",show.legend=F)  +
+  geom_vline(xintercept = 0, linetype = "solid") +
+
+  scale_colour_manual('Condition',breaks=c('Targ','Unr'),labels=c("Target","Unrelated"),values=c('red','darkgrey')) +
+  scale_fill_manual('Condition',breaks=c('Targ','Unr'),values=c('red','darkgrey')) +
+  scale_linetype_manual('Condition',breaks=c('Targ','Unr'),labels=c("Target","Unrelated"),values=c('longdash','dotted')) +
+  
+  scale_x_continuous(limits=c(-1000,1000),expand=c(0,0),breaks=seq(-1000, 1000, 500)) +
+  scale_y_continuous(limits=c(-.05,1),expand=c(0,0),breaks=seq(0,1,.25)) +
+  
+  facet_wrap(vars(Lang), nrow = 2) +
+  
+  theme(plot.margin=unit(c(.1,.3,.1,.1),"in"),legend.key=element_blank(),text=element_text(size=20),legend.key.width=unit(.6,"in"))
+
+```
+
+Print the plot:
+```{r eval=T, echo=T, message=F}
+p1
+```
+
+## Prepare the data
+
+We will select the time window for the analysis. The time window should be large enough to capture a divergence point, but it should not include time bins with very few observations. It may be impossible to perform a statistical analysis (e.g., t-test) on such data. We will choose the time from -800 ms relative to the target word onset.  
+
+The commands below will also create a stratification variable. Data resampling will be performed within this variable. In this case, data will be resampled within subject, condition and time. This variable should be treated as a factor.   
+```{r eval=T, echo=T, message=F}
+div.dat = fix.binom.20bin.TU %>%  
+  filter(Time>=-800) %>% 
+  dplyr::mutate(StrataVars=paste(Subject,Condition,Time,sep='')) %>% 
+  mutate_at(vars(Lang,StrataVars),as.factor) %>% 
+  droplevels()
+```
+
+```{r eval=T, echo=T, message=F}
+head(div.dat)
+```
+
+## Define a bootstrap function 
+
+We will define a bootstrap function to compute a divergence point for the Target vs. Unrelated conditions.  
+
+```{r eval=T, echo=T, message=F}
+boot_L1L2 = function(original_data, resample_indices){
+  dat_resample = original_data[resample_indices, ] # resample the data
+  
+  prog$tick()$print() # update progress bar
+  
+  dat = dat_resample %>% 
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation = mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) # average fixation proportion by subject, condition and time, keeping group
+  
+  # a statistical test at each timepoint for each group
+  test_g1 = dat %>% # test for L1 group
+    subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]]) # t-test 
+  
+  test_g2 = dat %>% # test for L2 group
+    subset(Lang == "L2") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])
+  
+  # return a TRUE/FALSE vector of significant positive t-scores  
+  # (positive means more looks to the target than unrelated)
+  t_g1 = test_g1$t > 1.96
+  t_g2 = test_g2$t > 1.96
+  
+  # create empty vectors to store onsets
+  onset_g1 = onset_g2 = c()
+  
+  # find the index of the earliest run of 10 sequential TRUEs 
+  for (i in 1:(length(t_g2)-10)) { 
+    onset_g1[i] = sum(t_g1[i:(i+9)]) == 10
+    onset_g2[i] = sum(t_g2[i:(i+9)]) == 10
+  }
+  
+  # find the difference between onsets
+  delta_g1g2 = which(onset_g2)[1] - which(onset_g1)[1]
+  
+  # print 
+  # note: the bootstrap returns the indices of the respective timepoints, not absolute times. 
+  # The annotations to the right of each index (e.g. t[,1]) indicate where in the boot object the bootstrapped onset distributions can be found.
+  c(delta_g1g2,         # onset difference L1 vs. L2 t[,1]
+    which(onset_g1)[1], # onset bin for looks to target L1 t[,2]
+    which(onset_g2)[1])  # onset bin for looks to target L2 t[,3]
+}
+
+```
+
+Here, we define the number of iterations. 1000-2000 times are regarded as sufficient.  
+We only run 100 iterations just to save time.  
+```{r eval=T, echo=T, message=F}
+Niter = 100L
+```
+
+## Run the bootstrap
+
+The commands below will run the bootstrap and save the results as `bootres_L1L2`. `boot_L1L2` is the name of the function we defined earlier.  
+```{r eval=T, echo=T, message=F}
+prog = dplyr::progress_estimated(Niter + 1) # initialise the progress bar
+
+bootres_L1L2 = boot::boot(
+  data = div.dat,  # dataset to bootstrap       
+  statistic = boot_L1L2,  # bootstrap function      
+  strata = div.dat$StrataVars, # stratification variable 
+  R = Niter)  # number of iterations          
+```
+
+As this analysis takes time, you may want to save the results so that you can access them without running the analysis again. You can use the `save` command for that. The command below will save the data `bootres_L1L2` under the file name "bootres_L1L2.rds".  
+
+```{r eval=F, echo=T, message=F}
+save(bootres_L1L2, file="bootres_L1L2.rds")
+```
+
+When you want to get the saved data, you will just need to run:
+```{r eval=F, echo=T, message=F}
+load("bootres_L1L2.rds")
+```
+
+We can get the output by typing the command below.  
+Note that the returned values are the indices of timepoints, not the timepoints in milliseconds.  
+```{r eval=T, echo=T, message=F}
+bootres_L1L2 
+```
+
+The onsets from the original data are stored here:
+```{r eval=T, echo=T, message=F}
+bootres_L1L2$t0
+```
+
+The bootstrapped onsets computed after each resample are stored here, with each column corresponding to the index in the bootstrap function:
+```{r eval=T, echo=T, message=F}
+head(bootres_L1L2$t)
+```
+
+We can convert the mean onset times to milliseconds using the commands below.   
+We need to subtract 1 because the first timestamp for time -800 has an index of 1 but the timestamp is 0. We then multiply by 20 (as each bin contained 20 ms data).   
+```{r eval=T, echo=T, message=F}
+(mean(bootres_L1L2$t[,2], na.rm=T)-1)*20-800 # L1 onset
+(mean(bootres_L1L2$t[,3], na.rm=T)-1)*20-800 # L2 onset
+```
+
+We will now compute a confidence interval in milliseconds.  
+
+The `boot` package has a couple of functions for computing confidence intervals 
+(CIs), the main one being `boot.ci()`. Within the `boot.ci()` function, you can 
+choose which type of interval is appropriate to your data using the `type` argument.
+See the references under ?boot.ci for how to decide which is the most appropriate.
+For normally distributed bootstrap distributions, the "percentile" is the simplest.  
+(from Stone et al., 2020)  
+
+
+We can find the 2.5th and 97.5th percentiles for column 1 (difference in divergence points L1 vs. L2 groups) 
+```{r eval=T, echo=T, message=F}
+boot::boot.ci(bootres_L1L2, index = 1, type = "perc")
+```
+
+In milliseconds:
+```{r eval=T, echo=T, message=F}
+boot::boot.ci(bootres_L1L2, index = 1, type = "perc")$percent[4:5]*20
+```
+
+We can compute the confidence intervals in milliseconds for the divergence points in both groups by typing the following:
+```{r eval=T, echo=T, message=F}
+(boot::boot.ci(bootres_L1L2, index=2, type="perc")$percent[4:5]-1)*20-800 # L1 group
+(boot::boot.ci(bootres_L1L2, index=3, type="perc")$percent[4:5]-1)*20-800 # L2 group
+```
+
+## Plot the results
+
+We will add the bootstrapped divergence points in the plot we created earlier.  
+```{r eval=T, echo=T, message=F}
+p1 = p1 + 
+  geom_point(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L1',]), 
+             aes(x = (mean(bootres_L1L2$t[,2], na.rm=T)-1)*20-800, y = .3), size = 1.5) +
+  geom_errorbarh(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L1',]), 
+                 aes(xmin = (boot::boot.ci(bootres_L1L2, index = 2, type = "perc")$perc[4]-1)*20-800, 
+                     xmax = (boot::boot.ci(bootres_L1L2, index = 2, type = "perc")$perc[5]-1)*20-800,
+                     y = .3), height = .1, size = .3) +
+  
+  geom_point(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L2',]), 
+             aes(x = (mean(bootres_L1L2$t[,3], na.rm=T)-1)*20-800, y = .3), size = 1.5) + 
+  geom_errorbarh(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L2',]), 
+                 aes(xmin = (boot::boot.ci(bootres_L1L2, index = 3, type = "perc")$perc[4]-1)*20-800,
+                     xmax = (boot::boot.ci(bootres_L1L2, index = 3, type = "perc")$perc[5]-1)*20-800,
+                     y = .3), height = .1, size = .3) 
+```
+
+Print the plot:
+```{r eval=T, echo=T, message=F}
+p1
+```
+
+#### **Quiz:** 
+
+```{r quiz1, echo=F}
+question_checkbox("Based on the results we just got, which of the following statements can you say? Select all that apply:",
+  answer("The L1 group started looking preferentially at the target before the acoustic onset of the target word.", correct=T),
+  answer("The L1 group started looking preferentially at the target around 500 ms before the acoustic onset of the target word.", correct=T),
+  answer("The L2 group started looking preferentially at the target before the target word could be processed, considering that it takes around 200 ms to make eye movements in response to a spoken stimulus."),
+  answer("The L1 group were quicker to start looking preferentially at the target than the L2 group.", correct=T),
+  allow_retry = T
+)
+```
+
+
+## Report the results
+
+You will report the mean divergence point or the mean difference and the confidence intervals.  
+
+**Example:**  
+The mean difference in divergence points between the L1 and L2 groups is 244 ms, 95% CI = [160, 340] ms.  
+
+
+## Homework
+
+1. Repeat the analysis with 1000 iterations (instead of 100). 
+
+2. Write a one-paragraph report summarising the findings. Include a graph showing the results from the analysis.

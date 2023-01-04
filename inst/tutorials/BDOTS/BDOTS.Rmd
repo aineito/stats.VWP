@@ -1,0 +1,214 @@
+---
+title       : "Bootstrapped Differences of Timeseries"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Notes about this tutorial
+
+This tutorial includes a failed attempt to use BDOTS to the data from Ito, Pickering & Corley (2018, JML). Thus, the codes provided here are only for a didactic purpose. In our paper (Ito & Knoeferle, 2022, BRM), we provide an in-depth discussion of why we think the analysis did not work for this data set.    
+
+For a successful application, please refer to vignettes that comes with the `bdots` package: https://cran.rstudio.com/web/packages/bdots/vignettes/bdots.html  
+
+## Set-up
+
+Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+require(bdots)
+require(stats.VWP)
+```
+
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the latter format, skip the command below.
+```{r eval=T, echo=T, message=F}
+options(scipen=999)
+```
+
+## Look at the data
+We will use `fix.50bin` data in the `stats.VWP` package for this tutorial.  
+The data is from Ito, Pickering & Corley (2018, JML). Let's look at the summary.  
+
+```{r eval=T, echo=T, message=F}
+summary(fix.50bin)
+```
+
+This data set contains the following data. 
+
+Column        |Description
+:-------------|:----------------------------------------------------------
+Subject       |Subject ID
+Trial         |Trial number
+Time          |Time relative to the target word onset (Time -1000 contains 50 ms from the time -1000 ms)
+allSample     |The sum of all samples in the corresponding time bin
+Count         |Right-eye sample count on the critical object
+BlinkCount    |The total number of right-eye samples that were in a blink event
+OffScreenCount|The total number of right-eye samples that fall outside of the display boundary (off screen)
+FixP          |Fixation proportion
+Condition     |Condition (Targ=target, Eng=English competitor, Jap=Japanese competitor, Unr=unrelated)
+Item          |Item ID
+Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
+
+
+You can also see the help page to get the details of the variables.
+```{r eval=F, echo=T, message=F}
+?fix.50bin
+```
+
+We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent variable.  
+
+The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
+
+For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+
+```{r eval=T, echo=T, message=F}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
+```
+
+We will use the target condition. We will drop the rest of the conditions.  
+```{r eval=T, echo=T, message=F}
+fix.50bin = fix.50bin %>% filter(Condition=='Targ') %>% droplevels()
+```
+
+We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent variable.  
+
+The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
+
+For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+
+```{r eval=T, echo=T, message=F}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
+```
+
+Let's plot a time-course graph with 'FixP' on the y-axis. 
+
+```{r eval=T, echo=T, message=F}
+fix.50bin.summary = summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Time'))
+```
+
+```{r eval=T, echo=T, message=F, fig.width=6}
+ggplot() + 
+  theme_bw() + 
+  geom_line(data=fix.50bin.summary, aes(x=Time, y=FixP, group=Lang, color=Lang, lty=Lang), lwd=1.5) +
+  geom_ribbon(data=fix.50bin.summary, aes(x=Time, ymin=FixP-se, ymax=FixP+se, color=Lang, fill=Lang), lwd=.2, alpha=.3, lty="dashed", show.legend=F)  +
+  labs(y="Fixation Proportion", x="Time relative to the target word onset (ms)") + 
+  
+  scale_x_continuous(limits=c(-1000,950), expand=c(0,0), breaks=seq(-750, 750, 250)) +
+  scale_color_manual('Lang', values=c("blue","deeppink")) +
+  scale_fill_manual('Lang', values=c("blue","deeppink")) +
+  scale_linetype_manual('Lang', values=c("solid","dotted")) +
+  
+  theme(text=element_text(size=20), legend.key.height=unit(.3,"in"), legend.key.width=unit(.6,"in")) 
+```
+
+
+## BDOTS
+
+Here we will run a by-subject analysis testing whether there was a group difference in the time-course of fixating the target.  
+
+Create a by-subject summary:  
+```{r eval=T, echo=T, message=F}
+subj.dat = Rmisc::summarySE(fix.50bin, measurevar='elogFix', groupvars=c('Subject','Lang','Time'), na.rm=T) 
+
+summary(subj.dat)
+```
+
+## Fit curves
+
+We use a 4-parameter logistic `logistic()` for the curve-fitting, as we are analysing fixation to a mentioned target, where the fixation proportion typically stays low at the beginning, then increases sharply, and finally reaches the peak and stays high for a while. For a double-Gaussian fit, `doubleGauss(concave=T)` should be used instead. The double-Gaussian fit is suitable for analysing fixation to a competitor, where the fixation proportion typically stays low at the beginning, increases, and then decreases after reaching a peak. The argument `concave=T` indicates concave up (`concave=F` would indicate concave down).  
+
+```{r eval=T, echo=T, message=F}
+subj.fit = bdots::bdotsFit(data=subj.dat, subject="Subject", time="Time", y="elogFix", group="Lang", curveType=logistic())
+```
+
+It is important to visualise the curve-fitting outcome and compare fitted curves with empirical data, because the results may be inaccurate if the curves are not reasonably fit.    
+
+```{r eval=T, echo=T, message=F, fig.height=6}
+plot(subj.fit)
+```
+
+We can see that the orange dashed lines (observed data) are quite different from the blue solid lines (model fit). According to Seedorff et al. (2018), R2 > .95 is seen as a good fit.   
+
+While there are cases where the fitted curves can be considered as reasonably good (R2 >= .8), most of the fitted curves are far from good enough.  
+
+We can quickly check how many subjects had a good fit by running the code below.
+
+```{r eval=T, echo=T, message=F}
+table(subj.fit$fitCode)
+```
+
+A `fitCode` of 1 indicates a reasonably good fit (R2 >= .8), and a `fitCode` of 2 indicates a poor fit (R2 < .8). A `fitCode` of 5 also indicates a poor fit, and suggests that the datasets could not be fit using the assumption of autocorrelated errors. For other fitCodes and an example of well-fitted curves, see the `bdots` vignettes (https://cran.rstudio.com/web/packages/bdots/vignettes/bdots.html).  
+
+## Re-fit curves
+
+We will see if re-fitting the curves improves the fitted curves. We use the `bdotsRefit` function for that. `fitCode` indicates lower bound on observations to refit. In the code below, we are refitting all observations with `fitCode` = 1, 2, 3, 4, 5 and 6 (i.e., everything).  
+
+```{r eval=T, echo=T, message=F}
+refit = bdots::bdotsRefit(subj.fit, fitCode=1L, quickRefit=T)
+```
+
+```{r eval=T, echo=T, message=F, fig.height=6}
+plot(refit)
+```
+
+```{r eval=T, echo=T, message=F}
+table(refit$fitCode)
+```
+
+The re-fitting did not improve the fits. The number of subjects who showed a reasonably good fit remained 10.  
+
+## Run the model
+
+Below, we illustrate the consequences of the bad curve-fitting we have seen. The `bdotsBoot` function will run BDOTS (ignoring the poor fits we saw above).     
+
+```{r eval=T, echo=T, message=F}
+boot1 = bdotsBoot(formula = elogFix ~ Lang(L1, L2), bdObj=subj.fit, Niter=1000L, alpha=.05, padj="oleson")
+```
+
+```{r eval=T, echo=T, message=F}
+summary(boot1)
+
+plot(boot1)
+```
+
+We can see that the analysis detected no significant difference between the target and unrelated conditions in any of the time bins, which is inconsistent with the visual inspection of the time-course plot and the results from other analyses. Using refitted curves detected no significant difference either (The latter result is not presented here).    
+
+Thus, when using BDOTS, it is important to ensure that the fitted curves explain the empirical data well by inspecting the curve fits. When the fits are bad, it can lead to erroneous interpretation of the data.   
+
+## Exercise
+
+In this tutorial, we wanted to compare the target fixation proportion between the L1 and L2 groups. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), write a code to fit curves to the English competitor fixation proportion and plot the fitted curves and observed data (don't actually run the code -  it will produce an error). Start with creating the dependent variable `elogFix`.     
+
+Click `Solution` to see the solution.  
+
+```{r BDOTS_prac, exercise=TRUE, exercise.lines=15}
+
+```
+
+```{r BDOTS_prac-solution}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
+
+fix.50bin = fix.50bin %>% filter(Condition=='Eng') %>% droplevels()
+
+subj.dat = Rmisc::summarySE(fix.50bin, measurevar='elogFix', groupvars=c('Subject','Lang','Time'), na.rm=T) 
+
+subj.fit = bdots::bdotsFit(data=subj.dat, subject="Subject", time="Time", y="elogFix", group="Lang", curveType=doubleGauss(concave=T))
+
+plot(subj.fit)
+```
+
+## Solution
+
+For this exercise, you should have changed the following from the tutorial code:
+
+- select the English competitor condition when subsetting the data `filter(Condition=='Eng')`
+- use a double-Gaussian function `doubleGauss` instead of a 4-parameter logistic because we are looking at a competitor effect
+- add `(concave=T)` to indicate concave up (we expect the fixation proportion to go up and then down)
+
