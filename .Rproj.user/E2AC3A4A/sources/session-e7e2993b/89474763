@@ -1,0 +1,26 @@
+{
+    "id": "89474763",
+    "path": "~/NUS/Lab/VWP_Stats/R_scripts/Tutorial_launch_template.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "1733417793",
+    "contents": "",
+    "dirty": false,
+    "created": 1671697229813.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "41,0",
+        "scrollLine": "17"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1672795871,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1672795871035,
+    "read_only": false,
+    "read_only_alternatives": []
+}

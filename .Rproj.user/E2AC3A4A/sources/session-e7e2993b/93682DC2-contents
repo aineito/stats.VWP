@@ -1,0 +1,322 @@
+---
+title       : "Cluster-based permutation analysis"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Set-up
+
+Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+require(stats.VWP)
+```
+
+For the cluster-based permutation analysis, we will use `exchanger` and `clusterperm` packages.  
+Install the packages using the commands below. (If you already have installed them, you can skip this step.)  
+```{r eval=F, echo=T, message=F}
+devtools::install_github(c("dalejbarr/exchangr", "dalejbarr/clusterperm"))
+```
+
+Load the `exchanger` and `clusterperm` packages.  
+```{r eval=T, echo=T, message=F}
+require(exchangr)
+require(clusterperm)
+```
+
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the latter format, skip the command below.
+```{r eval=T, echo=T, message=F}
+options(scipen=999)
+```
+
+## Look at the data
+We will use `fix.50bin` data in the `stats.VWP` package for this tutorial.  
+The data is from Ito, Pickering & Corley (2018, JML). Let's look at the summary.  
+
+```{r eval=T, echo=T, message=F}
+summary(fix.50bin)
+```
+
+This data set contains the following data. 
+
+Column        |Description
+:-------------|:----------------------------------------------------------
+Subject       |Subject ID
+Trial         |Trial number
+Time          |Time relative to the target word onset (Time -1000 contains 50 ms from the time -1000 ms)
+allSample     |The sum of all samples in the corresponding time bin
+Count         |Right-eye sample count on the critical object
+BlinkCount    |The total number of right-eye samples that were in a blink event
+OffScreenCount|The total number of right-eye samples that fall outside of the display boundary (off screen)
+FixP          |Fixation proportion
+Condition     |Condition (Targ=target, Eng=English competitor, Jap=Japanese competitor, Unr=unrelated)
+Item          |Item ID
+Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
+
+
+You can also see the help page to get the details of the variables.
+```{r eval=F, echo=T, message=F}
+?fix.50bin
+```
+
+We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent variable.  
+
+The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
+
+For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+
+```{r eval=T, echo=T, message=F}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
+```
+
+Let's plot a time-course graph with 'FixP' on the y-axis. 
+
+```{r eval=T, echo=T, message=F}
+fix.50bin.summary = Rmisc::summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Condition','Time'))
+```
+
+We will save this plot as `fix.plot` because we want to add the results from the analysis later.  
+
+```{r eval=T, echo=T, message=F, fig.width=6}
+fix.plot = ggplot(fix.50bin.summary) +
+  theme_light() + 
+  xlab("Time relative to target word onset (ms)") +
+  ylab('Fixation proportion') +
+  geom_line(aes(x=Time, y=FixP, group=Condition, colour=Condition, lty=Condition)) +
+  geom_ribbon(aes(x=Time,ymin=FixP-se,ymax=FixP+se,color=Condition,fill=Condition), linewidth=.2, alpha=.3, lty="dashed", show.legend=F)  +
+  scale_colour_manual('Condition',labels=c("Target","English competitor","Japanese competitor","Unrelated"),values=c('red','blue','deeppink','darkgrey')) +
+  scale_fill_manual('Condition',labels=c("Target","English competitor","Japanese competitor","Unrelated"),values=c('red','blue','deeppink','darkgrey')) +
+  scale_linetype_manual('Condition',labels=c("Target","English competitor","Japanese competitor","Unrelated"),values=c('solid','longdash','dotdash','dotted')) +
+  scale_y_continuous(limits=c(0,1),expand=c(0,0),breaks=seq(0,1,.25)) +
+  theme(text=element_text(size=14)) +
+  facet_wrap(~Lang, nrow=2) 
+```
+
+```{r eval=T, echo=T, message=F}
+fix.plot
+```
+
+## Multiple comparisons
+
+Before we run the cluster-based permutation analysis, let's look at what we get if we run multiple tests (the same test for each time bin).  
+
+Here, we'll run a by-subject analysis. For that, we will create a by-subject summary of the data.  
+For a by-item analysis, you will just need to replace `Subject` with `Item.`  
+
+```{r eval=T, echo=T, message=F}
+fix.50bin.subj.summary = Rmisc::summarySE(fix.50bin, measurevar='elogFix', groupvars=c('Subject','Lang','Condition','Time'))
+```
+
+```{r eval=T, echo=T, message=F}
+head(fix.50bin.subj.summary)
+```
+
+First, let's compare Target vs. Unrelated condition in the L1 group.  
+We will use the `aov_by_bin` function from the `clusterperm` package.  
+The usage of the function is: `aov_by_bin(.data, bin, formula)`  
+This will run an ANOVA testing the effect of `Condition` for each bin.  
+We will save the results as `Targ.Unr.L1.uncorrected` (multiple comparisons are not corrected).
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L1.uncorrected = aov_by_bin(fix.50bin.subj.summary[fix.50bin.subj.summary$Lang=='L1'&fix.50bin.subj.summary$Condition %in% c('Targ','Unr'),], Time, elogFix ~ Condition + Error(Subject))
+```
+
+What have we got?  
+The output is a data frame containing signed F statistics and p values for each time bin.  
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L1.uncorrected
+```
+
+We can subset the data and get the time bins in which the effect of Condition was significant. 
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L1.uncorrected %>% filter(p < .05)
+```
+
+Let's do the same for the L2 group.  
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L2.uncorrected = aov_by_bin(fix.50bin.subj.summary[fix.50bin.subj.summary$Lang=='L2'&fix.50bin.subj.summary$Condition %in% c('Targ','Unr'),], Time, elogFix ~ Condition + Error(Subject))
+
+Targ.Unr.L2.uncorrected %>% filter(p < .05)
+```
+
+**Quick Q:** What is the problem with multiple comparisons?
+
+
+## Adjust p-values for multiple comparisons
+
+What do we get if we apply the Bonferroni correction?  
+
+**Note:** This is not a part of the analysis. This is just demonstrating what you get if you use Bonferroni correction instead of the cluster-based permutation analysis.  
+
+**Quick Q:** What happens to the p-values if you apply the Bonferroni correction?
+
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L1.uncorrected = Targ.Unr.L1.uncorrected %>% mutate(p_bonf = p.adjust(p, method='bonferroni'))
+```
+
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L1.uncorrected %>% filter(p_bonf < .05)
+```
+
+L2 group:
+```{r eval=T, echo=T, message=F}
+Targ.Unr.L2.uncorrected = Targ.Unr.L2.uncorrected %>% mutate(p_bonf = p.adjust(p, method='bonferroni'))
+
+Targ.Unr.L2.uncorrected %>% filter(p_bonf < .05)
+```
+
+## Cluster-based permutation analysis
+
+Detect clusters and calculate mass statistics: 
+```{r eval=T, echo=T, message=F}
+(orig.L1.TU = detect_clusters_by_effect(Targ.Unr.L1.uncorrected, effect, Time, stat, p) )
+```
+
+```{r eval=T, echo=T, message=F}
+(orig.L2.TU = detect_clusters_by_effect(Targ.Unr.L2.uncorrected, effect, Time, stat, p) )
+```
+
+Now, we need to permute the data to derive the null hypothesis distribution for each cluster.  
+Permutation tests assume that observation labels are exchangeable under the null hypothesis.  
+For multilevel data and multifactor designs, we need to relabel factor levels to respect this requirement.  
+
+This is where the `exchangr` package comes in.  
+You can choose a function depending on your data/design.  
+
+function            |factor    |data / design
+:-------------------|:---------|:-----------------------
+shuffle()	 	        |          |single-level
+shuffle_each()      |within    |multi-level
+shuffle_sync()      |between	 |single- or multi-level
+shuffle_each_sync()	|within    |multi-level, mixed
+
+We need to 'fold' the data first.  
+
+```{r eval=T, echo=T, message=F}
+(dat.L1.TU = nest(fix.50bin.subj.summary[fix.50bin.subj.summary$Lang=='L1'&fix.50bin.subj.summary$Condition %in% c('Targ','Unr'),c('Subject','Condition','Time','elogFix')], -Subject, -Condition) )
+```
+You can ignore the warning.  
+
+We will do the same for the L2 group data.
+```{r eval=T, echo=T, message=F}
+(dat.L2.TU = nest(fix.50bin.subj.summary[fix.50bin.subj.summary$Lang=='L2'&fix.50bin.subj.summary$Condition %in% c('Targ','Unr'),c('Subject','Condition','Time','elogFix')], -Subject, -Condition) )
+```
+
+Now we will generate permutation null hypothesis distributions for `Condition` 
+We will set the number of permutation (monte carlo runs) `nmc` to 50 in the tutorial (to save time), but in reality, you should set it to a larger value (1000 or 2000).  
+Note: The `L` after the number forces R to treat the number as integer (instead of the default 'double', i.e., double precision floating point number). 
+
+**L1 group**
+```{r eval=T, echo=T, message=F}
+(nhds.L1.TU = cluster_nhds(n=50L, dat.L1.TU, Time, 
+                          elogFix ~ Condition + Error(Subject),  # model formula passed to 'aov_by_bin'
+                          shuffle_each, Condition, Subject))
+```
+
+```{r eval=T, echo=T, message=F}
+(results.L1.TU = pvalues(orig.L1.TU, nhds.L1.TU))
+```
+
+**L2 group**
+```{r eval=T, echo=T, message=F}
+(nhds.L2.TU = cluster_nhds(n=50L, dat.L2.TU, Time, 
+                          elogFix ~ Condition + Error(Subject),  # model formula passed to 'aov_by_bin'
+                          shuffle_each, Condition, Subject))
+```
+
+```{r eval=T, echo=T, message=F}
+(results.L2.TU = pvalues(orig.L2.TU, nhds.L2.TU))
+```
+
+## Plot the results
+
+The results are stored in `results.L1.TU` and `results.L2.TU`.  
+We will merge the two and extract significant clusters.  
+We will add the language group information in both data sets, so that we can distinguish them when they are merged.    
+```{r eval=T, echo=T, message=F}
+results.L1.TU = results.L1.TU %>% mutate(Lang='L1')
+```
+
+```{r eval=T, echo=T, message=F}
+results.L2.TU = results.L2.TU %>% mutate(Lang='L2')
+```
+
+Merge the two files:
+```{r eval=T, echo=T, message=F}
+(results.L1L2.TU = results.L1.TU %>% bind_rows(results.L2.TU) )
+```
+
+
+We will add a horizontal line at the bottom of the plot indicating a significant cluster for each group to the `fix.plot` graph we made earlier.  
+
+```{r eval=T, echo=T, message=F, fig.width=6}
+fix.plot + geom_errorbarh(data=results.L1L2.TU, aes(xmin=b0, xmax=b1, y=0), colour='red', height = 0, linewidth=3, alpha=.4, show.legend=F)
+```
+
+
+## Report the results
+
+You will report the cluster sum statistics and the p-value.  
+
+When reporting the results from the cluster-based permutation analysis, it is important to remember that the results do not establish significance of effect latency (cf. Sassenhagen & Draschkow, 2019, Psychophysiology).  
+This analysis provides no certainty or confidence regarding claims about a difference at the earliest or latest point in a cluster.  
+
+#### **Quiz:** 
+```{r quiz1, echo=F}
+question_checkbox("Given the above consideration, which of the following statements are INAPPROPRIATE when reporting the results from the cluster-based permutation analysis? Select all that apply:",
+  answer("We found two significant clusters. One ranged from around 200 ms to 500 ms, and the other ranged from around 600 ms to 700 ms."),
+  answer("We found a significant cluster (300 ms - 500 ms), which suggests that the effect started from 300 ms.", correct=T),
+  answer("We found a significant effect of condition. This corresponded to a cluster beginning around 200 ms."),
+  answer("A cluster in the observed data extended from 200 to 500 ms"),
+  answer("The significant cluster in Group 1 ranged from 200 ms to 500 ms, and that in Group 2 ranged from 350 ms to 800 ms. This suggests that the effect occurred earlier in Group 1 than in Group 2.", correct=T),
+  answer("The significant cluster in Group 1 ranged from 200 ms to 300 ms, and that in Group 2 ranged from 200 ms to 800 ms. This suggests that the effect was more long-lasting in Group 2 than in Group 1.", correct=T),
+  allow_retry = T
+)
+```
+
+
+## Exercise
+
+In this tutorial, we compared the target vs. unrelated conditions. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), compare the fixation proportion to the target between L1 and L2 speakers. Write a code to run a by-subject analysis with 1000 permutations (but don't actually run it because it will take a long time). Start with creating the dependent variable `elogFix`.   
+
+Click `Solution` to see the solution.  
+
+```{r CPA_prac, exercise=TRUE, exercise.lines=15}
+
+```
+
+```{r CPA_prac-solution}
+fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
+
+fix.50bin.subj.summary = Rmisc::summarySE(fix.50bin, measurevar='elogFix', groupvars=c('Subject','Lang','Condition','Time'))
+
+Targ.L1.L2.uncorrected = aov_by_bin(fix.50bin.subj.summary[fix.50bin.subj.summary$Condition=='Targ',], Time, elogFix ~ Lang + Error(Subject))
+
+orig.T.L1.L2 = detect_clusters_by_effect(Targ.L1.L2.uncorrected, effect, Time, stat, p)
+
+dat.T.L1.L2 = nest(fix.50bin.subj.summary[fix.50bin.subj.summary$Condition=='Targ',c('Subject','Lang','Time','elogFix')], -Subject, -Lang)
+
+nhds.T.L1.L2 = cluster_nhds(n=1000L, dat.T.L1.L2, Time, elogFix ~ Lang + Error(Subject), shuffle_sync, Lang, Subject)
+
+(results.T.L1.L2 = pvalues(orig.T.L1.L2, nhds.T.L1.L2))
+ 
+```
+
+## Solution
+
+For this exercise, you should have changed the following from the tutorial code:
+
+- for `aov_by_bin`, subset the data by just selecting the target condition change the time window `fix.50bin.subj.summary[fix.50bin.subj.summary$Condition=='Targ',]`
+- change the model syntax to `elogFix ~ Lang` to test the main effect of language group
+- change `Condition` to `Lang` when nesting the data
+- change the number of permutation to 1000 `n=1000L` when running `cluster_nhds` 
+- specify `shuffle_sync` when running `cluster_nhds` because `Lang` is a between-subject variable
+

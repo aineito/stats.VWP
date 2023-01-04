@@ -1,0 +1,27 @@
+{
+    "id": "BD1965F9",
+    "path": "~/NUS/Lab/VWP_Stats/GitHub/stats.VWP/inst/tutorials/DPA/DPA.Rmd",
+    "project_path": "inst/tutorials/DPA/DPA.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1671676649227.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "376,201",
+        "scrollLine": "0",
+        "last_setup_crc32": ""
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1671696914,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1671696914288,
+    "read_only": false,
+    "read_only_alternatives": []
+}

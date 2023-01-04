@@ -1,0 +1,44 @@
+# packages
+require(remotes)
+require(learnr)
+
+remotes::install_github("aineito/stats.VWP") # install the course materials
+
+require(stats.VWP) # load the installed package
+
+learnr::run_tutorial("Session3", "stats.VWP") # launch the intro tutorial page
+learnr::run_tutorial("Session4", "stats.VWP") # launch the LME tutorial page
+learnr::run_tutorial("Session6", "stats.VWP") # launch the GCA tutorial page
+learnr::run_tutorial("Session9", "stats.VWP") # launch the CPA tutorial page
+learnr::run_tutorial("Session11", "stats.VWP") # launch the DPA tutorial page
+
+
+##### Notes about putting an interactive learnr tutorial in a package #####
+# 
+# 1. In a GitHub-connected RStudio project, run usethis::create_package("<path_to_folder/name_of_package>") to make a basic package.
+# 2. Run usethis::use_tutorial("<name-of-learnr-file>", "<Title You'd Like the User to See>") to create the learnr tutorial. Customize with your content. Repeat for additional tutorials.
+# 3. Go to Build > Install and Restart.
+# 4. Optionally, run usethis::use_dev_package("gradethis") to add package dependencies for in-development packages, like gradethis.
+# 5. Optionally, run usethis::use_package("palmerpenguins") to add package dependencies for packages that are on CRAN, like palmerpenguins.
+# 6. Optionally, edit the DESCRIPTION file.
+# 7. Run usethis::use_readme_rmd() to add a README. Knit when you’re done.
+# 8. Push to GitHub and have folks install with devtools::install_github("<your-repo>/<package-name>")
+#    git add -A
+#    git commit -m "update"
+#    git push
+# 9. Go to Tutorial pane of IDE to run the tutorial.
+# 10. Repeat steps 2, 3, and 7 anytime you update your tutorial package.
+
+##### Notes about gitcreds #####
+#
+# gitcreds package is for managing current credential
+# call gitcreds_set()
+#
+
+##### Useful websites ######
+#
+# https://happygitwithr.com/
+#
+
+
+
