@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # stats.VWP
 
 Tutorials for visual world eye-tracking data analysis in R
@@ -39,4 +40,7 @@ learnr::run_tutorial("Session4", "stats.VWP") # LME/GLMM analysis
 learnr::run_tutorial("Session6", "stats.VWP") # Growth curve analysis  
 learnr::run_tutorial("Session9", "stats.VWP") # Cluster-based permutation analysis  
 learnr::run_tutorial("Session11", "stats.VWP") # Divergence point analysis
+```
+
+>>>>>>> cc9da83395e525720a73425cdc8be0b0afded7cb
 ```

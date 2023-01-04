@@ -1,11 +1,11 @@
 Package: stats.VWP
 Title: Analysing visual world eye-tracking data in R
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: 
     person(given = "Aine",
            family = "Ito",
            role = c("aut", "cre"),
-           email = "aine.ito@hu-berlin.de",
+           email = "aine.ito@nus.edu.sg",
            comment = c(ORCID = "https://orcid.org/0000-0003-4408-8801"))
 Description: This package contains data sets for the course "Analysing visual world eye-tracking data in R".
 License: MIT + file LICENSE
