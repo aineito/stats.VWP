@@ -1,0 +1,483 @@
+---
+title       : "Divergence point analysis"
+output      : learnr::tutorial
+runtime     : shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Set-up
+
+Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+```{r eval=T, echo=T, message=F}
+require(learnr)
+require(Rmisc)
+require(tidyverse)
+require(ggplot2)
+require(lme4)
+require(boot)
+require(stats.VWP)
+```
+
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the latter format, skip the command below.
+```{r eval=T, echo=T, message=F}
+options(scipen=999)
+```
+
+## Look at the data
+We will use `fix.binom.20bin` data in the `stats.VWP` package for this tutorial.  
+The data is from Ito, Pickering & Corley (2018, JML). Let's look at the summary.  
+
+```{r eval=T, echo=T, message=F}
+summary(fix.binom.20bin)
+```
+
+This data set contains the following data. 
+
+Column        |Description
+:-------------|:----------------------------------------------------------
+Subject       |Subject ID
+Trial         |Trial number
+Bin           |Time bin ID
+Time          |Time relative to the target word onset (Time -1000 contains 20 ms from the time -1000 ms)
+Count         |Right-eye sample count on the critical object
+Condition     |Condition (Targ=target, Eng=English competitor, Jap=Japanese competitor, Unr=unrelated)
+Item          |Item ID
+Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
+
+
+You can also see the help page to get the details of the variables.  
+```{r eval=F, echo=T, message=F}
+?fix.binom.20bin
+```
+
+We will compare Target vs. Unrelated conditions in this analysis, so we will subset the data first and name the data set as `fix.binom.20bin.TU`.  
+```{r eval=T, echo=T, message=F}
+fix.binom.20bin.TU = fix.binom.20bin %>% filter(Condition%in%c('Targ','Unr')) %>% droplevels()
+```
+
+Let's look at the summary.
+```{r eval=T, echo=T, message=F}
+summary(fix.binom.20bin.TU)
+```
+
+Now, we will plot a time-course graph using the 'Count' variable. 
+
+We will compute the means for each group, condition and time bin first.  
+```{r eval=T, echo=T, message=F}
+fix.binom.20bin.TU.summary = Rmisc::summarySE(fix.binom.20bin.TU, measurevar='Count', groupvars=c('Lang','Condition','Time'))
+```
+
+We will make a plot and save the plot as `p1`, because we will add the results from the analysis later.
+
+```{r eval=T, echo=T, message=F}
+p1 = ggplot() +
+  theme_light() +
+  xlab("Time relative to target word onset (ms)") +
+  ylab("Fixation proportion") +
+  
+  geom_line(data=fix.binom.20bin.TU.summary, aes(x=Time, y=Count, group=Condition, colour=Condition, lty=Condition)) +
+  geom_ribbon(data=fix.binom.20bin.TU.summary, aes(x=Time, ymin=Count-se, ymax=Count+se, color=Condition, fill=Condition), lwd=.2, alpha=.3, lty="dashed", show.legend=F)  +
+  geom_vline(xintercept=0, linetype="solid") +
+
+  scale_colour_manual('Condition', breaks=c('Targ','Unr'), labels=c("Target","Unrelated"), values=c('red','darkgrey')) +
+  scale_fill_manual('Condition', breaks=c('Targ','Unr'), values=c('red','darkgrey')) +
+  scale_linetype_manual('Condition', breaks=c('Targ','Unr'), labels=c("Target","Unrelated"), values=c('longdash','dotted')) +
+  
+  scale_x_continuous(limits=c(-1000,1000), expand=c(0,0), breaks=seq(-1000,1000,500)) +
+  scale_y_continuous(limits=c(-.05,1), expand=c(0,0), breaks=seq(0,1,.25)) +
+  
+  facet_wrap(vars(Lang), nrow = 2) +
+  
+  theme(plot.margin=unit(c(.1,.3,.1,.1),"in"), legend.key=element_blank(), text=element_text(size=16), legend.key.width=unit(.6,"in"))
+```
+
+Print the plot:
+```{r eval=T, echo=T, message=F}
+p1
+```
+
+## Prepare the data
+
+We will select the time window for the analysis. The time window should be large enough to capture a divergence point, but it should not include time bins with very few observations. It may be impossible to perform a statistical analysis (e.g., t-test) on such data. We will choose the time from -800 ms relative to the target word onset.  
+
+The commands below will also create a stratification variable. Data resampling will be performed within this variable. In this case, data will be resampled within subject, condition and time. This variable should be treated as a factor.   
+```{r eval=T, echo=T, message=F}
+div.dat = fix.binom.20bin.TU %>%  
+  filter(Time>=-800) %>% 
+  dplyr::mutate(StrataVars=paste(Subject, Condition, Time, sep='')) %>% 
+  mutate_at(vars(Lang,StrataVars), as.factor) %>% 
+  droplevels()
+```
+
+```{r eval=T, echo=T, message=F}
+head(div.dat)
+```
+
+## Define a bootstrap function 
+
+We will define a bootstrap function to compute a divergence point for the Target vs. Unrelated conditions. We will regard an effect lasting for at least 200 ms as significant.    
+
+```{r eval=T, echo=T, message=F}
+boot_L1L2 = function(original_data, resample_indices){
+  dat_resample = original_data[resample_indices, ] # resample the data
+  
+  dat = dat_resample %>% 
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation=mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) # average fixation proportion by subject, condition and time, keeping group
+  
+  # a statistical test at each timepoint for each group
+  test_g1 = dat %>% # test for L1 group
+    subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]]) # t-test 
+  
+  test_g2 = dat %>% # test for L2 group
+    subset(Lang == "L2") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])
+  
+  # return a TRUE/FALSE vector of significant positive t-scores (positive means more looks to the target than unrelated)
+  t_g1 = test_g1$t > 1.96
+  t_g2 = test_g2$t > 1.96
+  
+  # create empty vectors to store onsets
+  onset_g1 = onset_g2 = c()
+  
+  # find the index of the earliest run of 10 sequential TRUEs 
+  for (i in 1:(length(t_g2)-10)) { 
+    onset_g1[i] = sum(t_g1[i:(i+9)]) == 10
+    onset_g2[i] = sum(t_g2[i:(i+9)]) == 10
+  }
+  
+  # find the difference between onsets
+  delta_g1g2 = which(onset_g2)[1] - which(onset_g1)[1]
+  
+  # note: the bootstrap returns the indices of the respective timepoints, not absolute times. 
+  # The annotations to the right of each index (e.g. t[,1]) indicate where in the boot object the bootstrapped onset distributions can be found.
+  c(delta_g1g2,         # onset difference L1 vs. L2 t[,1]
+    which(onset_g1)[1], # onset bin for looks to target L1 t[,2]
+    which(onset_g2)[1])  # onset bin for looks to target L2 t[,3]
+}
+
+```
+
+To understand what each step is doing, let's break down the above function. We will look at what it's doing using the original data.  
+
+The first step is to create a by-subject summary:  
+```{r eval=T, echo=T, message=F}
+dat = div.dat %>% 
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation=mean(Count,na.rm=T), LogFix=log(MeanFixation+.5))
+head(dat)
+```
+
+Next, we run a t-test for each time bin. Let's just do this for the L1 data:  
+```{r eval=T, echo=T, message=F}
+test_g1 = dat %>% # test for L1 group
+    subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])
+```
+
+We got a t-value for each time bin: 
+```{r eval=T, echo=T, message=F}
+head(test_g1)
+```
+
+We'll then create a vector, indicating whether the effect was significant (TRUE) or not (FALSE)
+```{r eval=T, echo=T, message=F}
+(t_g1 = test_g1$t > 1.96)
+```
+
+The next code just creates an empty vector:  
+```{r eval=T, echo=T, message=F}
+onset_g1 = onset_g2 = c()
+onset_g1
+```
+
+The for-loop will give us the first bin of the 10 sequential TRUEs:  
+```{r eval=T, echo=T, message=F}
+ for (i in 1:(length(t_g1)-10)) { 
+    onset_g1[i] = sum(t_g1[i:(i+9)]) == 10
+ }
+which(onset_g1)[1]
+```
+
+We can see that the 9th bin was the first TRUE of the 10 sequential TRUEs in the L1 data.
+The above function does the same for the L2 data and also gets the onset difference between the groups.  
+
+OK, let's remove everything we used for the above demonstration.  
+```{r eval=T, echo=T, message=F}
+rm(dat,test_g1,t_g1,onset_g1,onset_g2)
+```
+
+
+## Run the bootstrap
+
+Here, we define the number of iterations. 1000-2000 times are regarded as sufficient.  
+We only run 100 iterations for this tutorial to save time. Change this to 1000-2000 when you apply this code to your dataset.    
+```{r eval=T, echo=T, message=F}
+Niter = 100L
+```
+
+The commands below will run the bootstrap and save the results as `bootres_L1L2`. `boot_L1L2` is the name of the function we defined earlier.  
+```{r eval=T, echo=T, message=F}
+bootres_L1L2 = boot::boot(
+  data = div.dat,  # dataset to bootstrap       
+  statistic = boot_L1L2,  # bootstrap function      
+  strata = div.dat$StrataVars, # stratification variable 
+  R = Niter)  # number of iterations          
+```
+
+We can get the output by typing the command below.  
+Note that the returned values are the indices of timepoints, not the timepoints in milliseconds.  
+```{r eval=T, echo=T, message=F}
+bootres_L1L2 
+```
+
+The onsets from the original data are stored here:
+```{r eval=T, echo=T, message=F}
+bootres_L1L2$t0
+```
+
+The bootstrapped onsets computed after each resample are stored here, with each column corresponding to the index in the bootstrap function:
+```{r eval=T, echo=T, message=F}
+head(bootres_L1L2$t)
+```
+
+We can convert the mean onset times to milliseconds using the commands below.   
+We need to subtract 1 because the first timestamp for time -800 has an index of 1 but the timestamp is 0. We then multiply by 20 (as each bin contained 20 ms data).
+We subtract 800 at the end because our time window was from -800 ms. If your time window starts with 0, then you don't need the `-800`.
+```{r eval=T, echo=T, message=F}
+(mean(bootres_L1L2$t[,2], na.rm=T)-1)*20-800 # L1 onset
+(mean(bootres_L1L2$t[,3], na.rm=T)-1)*20-800 # L2 onset
+```
+
+We will now compute a confidence interval in milliseconds.  
+
+The `boot` package has a couple of functions for computing confidence intervals 
+(CIs), the main one being `boot.ci()`. Within the `boot.ci()` function, you can 
+choose which type of interval is appropriate to your data using the `type` argument.
+See the references under ?boot.ci for how to decide which is the most appropriate.
+For normally distributed bootstrap distributions, the "percentile" is the simplest.  
+(from Stone et al., 2020)  
+
+
+We can find the 2.5th and 97.5th percentiles for column 1 (difference in divergence points L1 vs. L2 groups) 
+```{r eval=T, echo=T, message=F}
+boot::boot.ci(bootres_L1L2, index=1, type="perc")
+```
+
+In milliseconds:
+```{r eval=T, echo=T, message=F}
+boot::boot.ci(bootres_L1L2, index=1, type="perc")$percent[4:5]*20
+```
+
+We can compute the confidence intervals in milliseconds for the divergence points in both groups by typing the following:
+```{r eval=T, echo=T, message=F}
+(boot::boot.ci(bootres_L1L2, index=2, type="perc")$percent[4:5]-1)*20-800 # L1 group
+(boot::boot.ci(bootres_L1L2, index=3, type="perc")$percent[4:5]-1)*20-800 # L2 group
+```
+
+## Plot the results
+
+We will add the bootstrapped divergence points in the plot we created earlier.  
+```{r eval=T, echo=T, message=F}
+p1 = p1 + 
+  geom_point(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L1',]), 
+             aes(x = (mean(bootres_L1L2$t[,2], na.rm=T)-1)*20-800, y=.3), lwd=1.5) +
+  geom_errorbarh(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L1',]), 
+                 aes(xmin = (boot::boot.ci(bootres_L1L2, index=2, type="perc")$perc[4]-1)*20-800, 
+                     xmax = (boot::boot.ci(bootres_L1L2, index=2, type="perc")$perc[5]-1)*20-800,
+                     y=.3), height=.1, lwd=.3) +
+  
+  geom_point(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L2',]), 
+             aes(x = (mean(bootres_L1L2$t[,3], na.rm=T)-1)*20-800, y=.3), lwd=1.5) + 
+  geom_errorbarh(data = subset(fix.binom.20bin.TU.summary[fix.binom.20bin.TU.summary$Lang=='L2',]), 
+                 aes(xmin = (boot::boot.ci(bootres_L1L2, index=3, type="perc")$perc[4]-1)*20-800,
+                     xmax = (boot::boot.ci(bootres_L1L2, index=3, type="perc")$perc[5]-1)*20-800,
+                     y=.3), height=.1, lwd=.3) 
+```
+
+Print the plot:
+```{r eval=T, echo=T, message=F}
+p1
+```
+
+**Quiz:** 
+
+```{r quiz1, echo=F}
+question_checkbox("Based on the results we just got, which of the following statements can you say? Select all that apply:",
+  answer("The L1 group started looking preferentially at the target before the acoustic onset of the target word.", correct=T),
+  answer("The L1 group started looking preferentially at the target around 500 ms before the acoustic onset of the target word.", correct=T),
+  answer("The L2 group started looking preferentially at the target before the target word could be processed, considering that it takes around 200 ms to make eye movements in response to a spoken stimulus."),
+  answer("The L1 group were quicker to start looking preferentially at the target than the L2 group.", correct=T),
+  allow_retry = T
+)
+```
+
+## Compute p-value
+
+We can compute a p-value for the group comparison by creating a bootstrap distribution of the null hypothesis. To do this, we will first pool the original data from both groups, randomly assign group labels, and then estimate a difference in divergence point. We will repeat this many times to obtain a distribution of divergence point that could be expected under the null hypothesis. We will obtain the p-value by calculating the proportion of samples from this null distribution that are larger than the observed difference in divergence point in the empirical data.  
+
+Below, we will calculate a p-value for the group comparison (L1 vs. L2 group). We will first define a bootstrap function. 
+
+```{r eval=T, echo=T, message=F}
+boot_L1L2_pval = function(original_data, resample_indices){
+  dat_resample = original_data[resample_indices, ] 
+
+  dat = dat_resample %>% 
+    group_by(Subject, Condition, Time) %>% 
+    transform(Lang=sample(Lang,replace=F)) %>% # randomly assign group labels 
+    ungroup() %>% 
+    
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation=mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) %>%  
+    ungroup()
+  
+  test_g1 = dat %>% subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])  
+  
+  test_g2 = dat %>% subset(Lang == "L2") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])
+  
+  t_g1 = test_g1$t > 1.96
+  t_g2 = test_g2$t > 1.96
+  
+  onset_g1 = onset_g2 = c()
+  
+  for (i in 1:(length(t_g2)-10)) { 
+    onset_g1[i] = sum(t_g1[i:(i+9)]) == 10
+    onset_g2[i] = sum(t_g2[i:(i+9)]) == 10
+  }
+  
+  # find the difference between onsets
+  delta_g1g2 = which(onset_g2)[1] - which(onset_g1)[1]
+
+  delta_g1g2  # onset difference L1 vs. L2 t[,1]
+}
+
+```
+
+Run the bootstrap   
+```{r eval=T, echo=T, message=F}
+bootres_L1L2_pval = boot::boot(
+  data = div.dat,  # data set to bootstrap       
+  statistic = boot_L1L2_pval,  # bootstrap function      
+  strata = div.dat$StrataVars, # stratification variable 
+  R = Niter)  # number of iterations          
+```
+
+Compute the p-value
+```{r eval=T, echo=T, message=F}
+round(mean(bootres_L1L2_pval$t[,1]>=bootres_L1L2$t0[1], na.rm=T), 3)        
+```
+
+Note: The p-value computation is probably not accurate as we only resampled the data 100 times. It may also change slighlty every time you run the script, because this technique uses random sampling.     
+
+## Report the results
+
+You will report the mean divergence point or the mean difference and the confidence intervals.  
+
+**Example:**  
+The mean difference in divergence points between the L1 and L2 groups is 244 ms, 95% CI = [160, 340] ms.  
+
+
+## Exercise
+
+**Exercise 1:**  
+In this tutorial, we defined the bootstrapping function as the code below. Modify the code to (1) perform t-tests using the `MeanFixation` as a dependent variable, (2) change the significance threshold to the t-value being smaller than 2, and (3) consider an effect that lasted for at least 300 ms as significant (Note: the bin size is 20 ms).   
+
+Click `Solution` to see the solution.  
+
+```{r DPA_prac1, exercise=TRUE, exercise.lines=40}
+boot_L1L2 = function(original_data, resample_indices){
+  dat_resample = original_data[resample_indices, ] 
+  
+  dat = dat_resample %>% 
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation=mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) 
+  
+  test_g1 = dat %>% subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]]) 
+  
+  test_g2 = dat %>% subset(Lang == "L2") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(LogFix ~ Condition)$statistic[[1]])
+  
+  t_g1 = test_g1$t > 1.96
+  t_g2 = test_g2$t > 1.96
+  
+  onset_g1 = onset_g2 = c()
+  
+  for (i in 1:(length(t_g2)-10)) { 
+    onset_g1[i] = sum(t_g1[i:(i+9)]) == 10
+    onset_g2[i] = sum(t_g2[i:(i+9)]) == 10
+  }
+
+  delta_g1g2 = which(onset_g2)[1] - which(onset_g1)[1]
+  
+  c(delta_g1g2,         
+    which(onset_g1)[1], 
+    which(onset_g2)[1]) 
+}
+```
+
+```{r DPA_prac1-solution}
+boot_L1L2 = function(original_data, resample_indices){
+  dat_resample = original_data[resample_indices, ] 
+  
+  dat = dat_resample %>% 
+    group_by(Subject, Condition, Time, Lang) %>%
+    dplyr::summarise(MeanFixation=mean(Count,na.rm=T), LogFix=log(MeanFixation+.5)) 
+  
+  test_g1 = dat %>% subset(Lang == "L1") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(MeanFixation ~ Condition)$statistic[[1]]) 
+  
+  test_g2 = dat %>% subset(Lang == "L2") %>% group_by(Time) %>%
+    dplyr::summarise(t = t.test(MeanFixation ~ Condition)$statistic[[1]])
+  
+  t_g1 = test_g1$t < 2
+  t_g2 = test_g2$t < 2
+  
+  onset_g1 = onset_g2 = c()
+  
+  for (i in 1:(length(t_g2)-15)) { 
+    onset_g1[i] = sum(t_g1[i:(i+14)]) == 15
+    onset_g2[i] = sum(t_g2[i:(i+14)]) == 15
+  }
+
+  delta_g1g2 = which(onset_g2)[1] - which(onset_g1)[1]
+  
+  c(delta_g1g2,         
+    which(onset_g1)[1], 
+    which(onset_g2)[1]) 
+}
+```
+
+**Exercise 2:**  
+
+We ran the code below to get CIs for the L1 group. If we had used a time window from -500 ms to 200 ms and each bin contained 50 ms data, how should we change the code?
+```{r DPA_prac2, exercise=TRUE, exercise.lines=4}
+(boot::boot.ci(bootres_L1L2, index=2, type="perc")$percent[4:5]-1)*20-800
+```
+
+
+```{r DPA_prac2-solution}
+(boot::boot.ci(bootres_L1L2, index=2, type="perc")$percent[4:5]-1)*50-500
+```
+
+
+## Solution
+
+For exercise 1, you should have changed the following from the tutorial code:
+
+- the t-test should have `MeanFixation` as the dependent variable as in `t.test(MeanFixation ~ Condition)`
+- change the threshold to `test_g1$t < 2` and `test_g2$t < 2` (for both groups)
+- in the for-loop, change the first line to `for (i in 1:(length(t_g2)-15)) {` and the following lines to `onset_g1[i] = sum(t_g1[i:(i+14)]) == 15` and `onset_g2[i] = sum(t_g2[i:(i+14)]) == 15` (15 bins = 300 ms)
+
+For exercise 2, you should have changed the following from the tutorial code:
+
+- change the bin size from 20 to 50 
+- change the time adjustement to -500 (the first bin = - 500 ms)
+
