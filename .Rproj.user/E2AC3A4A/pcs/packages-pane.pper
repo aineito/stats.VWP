@@ -1,6 +1,6 @@
 {
     "installOptions": {
-        "installFromRepository": false,
+        "installFromRepository": true,
         "libraryPath": "C:/Users/aine.ito/AppData/Local/R/win-library/4.2",
         "installDependencies": true
     }
