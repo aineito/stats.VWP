@@ -7,21 +7,26 @@ Tutorials for visual world eye-tracking data analysis in R
 Run the following commands to install this package. You need to have 'remotes' package installed before running them.  
 
 ``` r
-require(remotes)  # load 'remotes' package
-remotes::install_github("aineito/stats.VWP")  # install 'stats.VWP' package
+require(remotes)  # load 'remotes' 
+remotes::install_github("aineito/stats.VWP")  # install 'stats.VWP' 
 ```
 
 The package comes with 5 tutorials. You need to have 'learnr' package installed for the tutorials.   
 
 ``` r
-require(learnr)  # load 'learnr' package
-require(stats.VWP)  # load stats.VWP package
+require(learnr)  # load 'learnr' 
+require(stats.VWP)  # load 'stats.VWP' 
 ```
 
-The GCA tutorial requires 'gazer' package, and the CPA tutorial requires the 'exchangr' and 'clusterperm'.  
+The GCA tutorial requires 'gazer' package, and the CPA tutorial requires the 'exchangr' and 'clusterperm'. They need to be installed from GitHub.    
 ``` r
-remotes::install_github("dmirman/gazer")  # install gazer
+remotes::install_github("dmirman/gazer")  # install 'gazer'
 remotes::install_github(c("dalejbarr/exchangr", "dalejbarr/clusterperm"))  # install 'exchangr' and 'clusterperm'
+```
+
+Other required packages can be installed by running the code below.  
+``` r
+install.packages(c("Rmisc", "tidyverse", "ggplot2", "bdots", "ggnewscale", "permutes", "lme4", "boot", "mgcv", "itsadug"))
 ```
 
 ## Tutorials

@@ -5,8 +5,8 @@ runtime     : shiny_prerendered
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
@@ -186,11 +186,11 @@ Targ.Unr.L2.uncorrected %>% filter(p_bonf < .05)
 **Note:** As of 16 January 2023, the script below does not work because the `cluster_nhds` function in the `clusterperm` package no longer accepts nested data frames. I'm keeping the script below hoping that we can use (more or less) the same script when this problem is fixed. I will update the tutorial when it's fixed. For now, let's run the analysis using another package `permutes`.      
 
 Detect clusters and calculate mass statistics: 
-```{r eval=T, echo=T, message=F}
+```{r eval=F, echo=T, message=F}
 (orig.L1.TU = detect_clusters_by_effect(Targ.Unr.L1.uncorrected, effect, Time, stat, p) )
 ```
 
-```{r eval=T, echo=T, message=F}
+```{r eval=F, echo=T, message=F}
 (orig.L2.TU = detect_clusters_by_effect(Targ.Unr.L2.uncorrected, effect, Time, stat, p) )
 ```
 
@@ -210,13 +210,13 @@ shuffle_each_sync()	|within    |multi-level, mixed
 
 We need to 'fold' the data first.  
 
-```{r eval=T, echo=T, message=F}
+```{r eval=F, echo=T, message=F}
 (dat.L1.TU = nest(fix.50bin.L1.subj.summary[,c('Subject','Condition','Time','elogFix')], -Subject, -Condition) )
 ```
 You can ignore the warning.  
 
 We will do the same for the L2 group data.
-```{r eval=T, echo=T, message=F}
+```{r eval=F, echo=T, message=F}
 (dat.L2.TU = nest(fix.50bin.L2.subj.summary[,c('Subject','Condition','Time','elogFix')], -Subject, -Condition) )
 ```
 

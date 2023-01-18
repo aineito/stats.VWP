@@ -5,6 +5,7 @@ runtime     : shiny_prerendered
 ---
 
 ```{r setup, include=FALSE}
+rm(list = ls())
 knitr::opts_chunk$set(echo = FALSE)
 ```
 

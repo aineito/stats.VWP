@@ -5,6 +5,7 @@ runtime     : shiny_prerendered
 ---
 
 ```{r setup, include=FALSE}
+rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -78,7 +79,7 @@ fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-
 Let's plot a time-course graph with 'FixP' on the y-axis. 
 
 ```{r eval=T, echo=T, message=F}
-fix.50bin.summary = summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Condition','Time'))
+fix.50bin.summary = Rmisc::summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Condition','Time'))
 ```
 
 ```{r eval=T, echo=T, message=F, fig.width=10}
