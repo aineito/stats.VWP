@@ -26,7 +26,7 @@ remotes::install_github(c("dalejbarr/exchangr", "dalejbarr/clusterperm"))  # ins
 
 Other required packages can be installed by running the code below.  
 ``` r
-install.packages(c("Rmisc", "tidyverse", "ggplot2", "bdots", "ggnewscale", "permutes", "lme4", "boot", "mgcv", "itsadug"))
+install.packages(c("Rmisc", "tidyverse", "ggplot2", "bdots", "ggnewscale", "permutes", "lme4", "boot", "mgcv", "itsadug", "buildmer", "permuco"))
 ```
 
 ## Tutorials

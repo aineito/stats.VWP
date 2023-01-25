@@ -82,14 +82,14 @@ Let's plot a time-course graph with 'FixP' on the y-axis.
 fix.50bin.summary = Rmisc::summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Condition','Time'))
 ```
 
-```{r eval=T, echo=T, message=F, fig.width=10}
+```{r eval=T, echo=T, message=F, warning=F, fig.width=8}
 ggplot() + 
   facet_wrap(~Lang) + theme_bw() + 
   geom_line(data=fix.50bin.summary,aes(x=Time, y=FixP, group=Condition, colour=Condition, lty=Condition), lwd=1.5) +
   geom_ribbon(data=fix.50bin.summary,aes(x=Time, ymin=FixP-se, ymax=FixP+se, color=Condition, fill=Condition), lwd=.2, alpha=.3, lty="dashed", show.legend=F)  +
   labs(y="Fixation Proportion", x="Time relative to the target word onset (ms)") + 
   
-  scale_x_continuous(limits=c(-1000,950),expand=c(0,0),breaks=seq(-750, 750, 250)) +
+  scale_x_continuous(limits=c(-1000,950),expand=c(0,0),breaks=seq(-500, 500, 500)) +
   scale_color_manual('Condition', values=c("red","darkgrey")) +
   scale_fill_manual('Condition', values=c("red","darkgrey")) +
   scale_linetype_manual('Condition', values=c("solid","dotted")) +
@@ -117,12 +117,15 @@ contrasts(fix.L2dat$Condition) = contr.sum(2)
 
 To model non-linear curves, we will use a smooth function `s()`. The model below includes a random smooth (which adjusts the trend of a numeric predictor (Time) in a non-linear way; "fs" = factor smooth) for Time by Condition, smooth interactions for Time by Subject and Time by Item. `by=Condition` is used to model potentially different trends over time for different conditions. The random smooths include random intercepts and random slope effects.
 
+**A bit more about random effects:**
+`s(Time, by=Condition)` indicates you want to model different trends over time for different conditions. A by-subject random intercept can be specified using `s(Subject, bs="re")`, and a by-subject random slope can be specified using `s(Subject, Time, bs="re")`.   
+
 We will run the model below first to determine an appropriate value for the AR1 correlation parameter (the parameter to account for autocorrelated residuals).  
 
 ```{r eval=T, echo=T, message=F}
-gamm.base.L1 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data = fix.L1dat)
+gamm.base.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data = fix.L1dat)
 
-gamm.base.L2 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data = fix.L2dat)
+gamm.base.L2 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data = fix.L2dat)
 ```
 
 The warning "model has repeated 1-d smooths of same variable" tells us that we have smooths over time both in random effects and fixed effects. That is fine, so we can ignore this warning.  
@@ -133,16 +136,16 @@ summary(gamm.base.L2)
 ```
 
 ```{r eval=T, echo=T, message=F}
-( rho.L1 = start_value_rho(gamm.base.L1) )
-( rho.L2 = start_value_rho(gamm.base.L2) )
+( rho.L1 = itsadug::start_value_rho(gamm.base.L1) )
+( rho.L2 = itsadug::start_value_rho(gamm.base.L2) )
 ```
 
 The above function gives us a value we can use for the AR1 parameter. We will add these values to the models below (`rho=VALUE`).    
 
 ```{r eval=T, echo=T, message=F}
-gamm.main.L1 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
+gamm.main.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
 
-gamm.main.L2 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L2dat, rho=rho.L2, AR.start=Is_start)
+gamm.main.L2 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L2dat, rho=rho.L2, AR.start=Is_start)
 ```
 
 ## Visualise the residuals
@@ -150,28 +153,28 @@ gamm.main.L2 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject
 We will plot the residuals of the fitted model.  
 
 ```{r eval=T, echo=T, message=F}
-gam.check(gamm.main.L1) 
-gam.check(gamm.main.L2) 
+mgcv::gam.check(gamm.main.L1) 
+mgcv::gam.check(gamm.main.L2) 
 ```
 
 We can check if accounting for autocorrelation improves the models. The value on the y-axis of the second line (from the left) indicates the amount of autocorrelation at lag 1.
 
 L1 group  
 ```{r eval=T, echo=T, message=F}
-acf_resid(gamm.base.L1, split_pred=c('Subject', 'Item')) # autocorrelation is not taken into account
-acf_resid(gamm.main.L1, split_pred=c('Subject', 'Item')) # autocorrelation is taken into account
+itsadug::acf_resid(gamm.base.L1, split_pred=c('Subject', 'Item')) # autocorrelation is not taken into account
+itsadug::acf_resid(gamm.main.L1, split_pred=c('Subject', 'Item')) # autocorrelation is taken into account
 ```
 
 L2 group  
 ```{r eval=T, echo=T, message=F}
-acf_resid(gamm.base.L2, split_pred=c('Subject', 'Item')) # autocorrelation is not taken into account
-acf_resid(gamm.main.L2, split_pred=c('Subject', 'Item')) # autocorrelation is taken into account
+itsadug::acf_resid(gamm.base.L2, split_pred=c('Subject', 'Item')) # autocorrelation is not taken into account
+itsadug::acf_resid(gamm.main.L2, split_pred=c('Subject', 'Item')) # autocorrelation is taken into account
 ```
 
 ## Model comparison
 ```{r eval=T, echo=T, message=F}
-compareML(gamm.base.L1, gamm.main.L1)
-compareML(gamm.base.L2, gamm.main.L2)
+itsadug::compareML(gamm.base.L1, gamm.main.L1)
+itsadug::compareML(gamm.base.L2, gamm.main.L2)
 ```
 
 For both groups, the model with the autocorrelation parameter was better.  
@@ -187,21 +190,21 @@ Note: The explained deviance has dropped slightly because the main models are ac
 ## Plot results
 L1 group  
 ```{r eval=T, echo=T, message=F}
-plot_smooth(gamm.main.L1, view="Time", plot_all="Condition", v0=0, col=c('red','darkgrey'))
+itsadug::plot_smooth(gamm.main.L1, view="Time", plot_all="Condition", v0=0, col=c('red','darkgrey'))
 ```
 
 L2 group  
 ```{r eval=T, echo=T, message=F}
-plot_smooth(gamm.main.L2, view="Time", plot_all="Condition", v0=0, col=c('red','darkgrey'))
+itsadug::plot_smooth(gamm.main.L2, view="Time", plot_all="Condition", v0=0, col=c('red','darkgrey'))
 ```
 
 We can estimate the time when the effect occurred using the codes below.  
 ```{r eval=T, echo=T, message=F}
-plot_diff(gamm.main.L1, view="Time", comp=list(Condition=c("Targ", "Unr")))
+itsadug::plot_diff(gamm.main.L1, view="Time", comp=list(Condition=c("Targ", "Unr")))
 ```
 
 ```{r eval=T, echo=T, message=F}
-plot_diff(gamm.main.L2, view="Time", comp=list(Condition=c("Targ", "Unr")))
+itsadug::plot_diff(gamm.main.L2, view="Time", comp=list(Condition=c("Targ", "Unr")))
 ```
 
 ## Exercise
@@ -210,25 +213,22 @@ In this tutorial, we compared the target vs. unrelated conditions in the L1 grou
 
 Modify the so that you will have a model testing the same effect but with a different random-effects structure. Build a model that only includes by-subject and by-item random intercepts, and another model that includes by-subject and by-item random slope for Time (but no random intercepts).  
 
-Remember, random effects are not specified in the same way as in LME. Click `Hint` if you need some hints.  
+Remember, random effects are not specified in the same way as in LME. Check the `Fit the models` section again if you need to review how to specify random effects in GAMM.  
 
 Click `Solution` to see the solution.  
 
 ```{r GAMM_prac, exercise=TRUE, exercise.lines=15}
-gamm.main.L1 = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
+gamm.main.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
 
 
 
 ```
 
-<div id="GAMM_prac-hint">
-**Hint:** `s(Time, by=Condition)` indicates you want to model different trends over time for different conditions. A by-subject random intercept can be specified using `s(Subject, bs="re")`, and a by-subject random slope can be specified using `s(Subject, Time, bs="re")` 
-</div>
 
 ```{r GAMM_prac-solution}
-gamm.main.L1.intercept = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Subject, bs="re") + s(Item, bs="re"), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
+gamm.main.L1.intercept = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Subject, bs="re") + s(Item, bs="re"), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
 
-gamm.main.L1.slope = bam(elogFix ~ Condition + s(Time, by=Condition) + s(Subject, Time, bs="re") + s(Item, Time, bs="re"), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
+gamm.main.L1.slope = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Subject, Time, bs="re") + s(Item, Time, bs="re"), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)
 
 ```
 

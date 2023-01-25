@@ -78,23 +78,13 @@ We will use the target condition. We will drop the rest of the conditions.
 fix.50bin = fix.50bin %>% filter(Condition=='Targ') %>% droplevels()
 ```
 
-We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent variable.  
-
-The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
-
-For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
-
-```{r eval=T, echo=T, message=F}
-fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
-```
-
 Let's plot a time-course graph with 'FixP' on the y-axis. 
 
 ```{r eval=T, echo=T, message=F}
 fix.50bin.summary = summarySE(fix.50bin, measurevar='FixP', groupvars=c('Lang','Time'))
 ```
 
-```{r eval=T, echo=T, message=F, fig.width=6}
+```{r eval=T, echo=T, message=F, warning=F, fig.width=6}
 ggplot() + 
   theme_bw() + 
   geom_line(data=fix.50bin.summary, aes(x=Time, y=FixP, group=Lang, color=Lang, lty=Lang), lwd=1.5) +
