@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Set-up
 
-Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+Load the following packages. If you haven't installed them yet, do so first (e.g. `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
 ```{r eval=T, echo=T, message=F}
 require(learnr)
 require(Rmisc)
@@ -29,8 +29,8 @@ remotes::install_github("dmirman/gazer")
 require(gazer)
 ```
 
-This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
-If you like the latter format, skip the command below.
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g. 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the indices format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
 ```
@@ -57,7 +57,7 @@ Item          |Item ID
 Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
 
 
-You can also see the help page to get the details of the variables.  
+The details/description of the variables can also be found in the help page.  
 ```{r eval=F, echo=T, message=F}
 ?fix.binom.50bin
 ```
@@ -100,7 +100,7 @@ contrasts(fix.binom.pred$Condition)
 contrasts(fix.binom.pred$Lang)
 ```
 
-R treats the first level ('Targ' and 'L1' in our case) as the reference level.  
+R treats the first level (i.e. 'Targ' and 'L1') as the reference level.  
 We want to change the matrix so that the 'Unr' condition becomes the reference level.  
 For sum-coding, we can use `contr.sum` function. We put the number 2 because we have 2 levels for `Lang`.
 ```{r eval=T, echo=T, message=F}
@@ -127,7 +127,7 @@ Let's construct a simple random-effects structure model just with the by-subject
 
 This is a GLMM testing an interaction of `Condition` by `Lang` and effects of `Condition` and `Lang`. It also includes 2-way interactions of `Condition` by `poly1`, `Condition` by `poly2`, `Lang` by `poly1` and `Lang` by `poly2`, and 3-way interactions of `Condition` by `Lang` by `poly1` and `Condition` by `Lang` by `poly2`.  
 
-**Note:** Here we are excluding random slopes just to save time. So the results here are partly inconsistent with what is reported in the paper. When you create a model, you need to choose the best random-effects structure for your design/data.
+**Note:** We will be excluding random slopes here to save time. Hence, the results will be partly inconsistent with what is reported in the paper. When you create a model, you need to choose the best random-effects structure for your design/data.  
 
 ```{r eval=T, echo=T, message=F}
 fix.binom.pred.m.cond.lang = glmer(Count ~ (poly1+poly2) * Condition * Lang + (1|Subject) + (1|Item), family=binomial, data=fix.binom.pred)
@@ -181,13 +181,13 @@ contrasts(fix.binom.pred$Condition)
 
 
 Now, if we look at the 2-way interactions of `Condition` by `poly1` and `Condition` by `poly2`, the p-value for `poly1:Condition1` is significant.  
-This suggests that the effect of condition (Target vs. Unrelated) interacted with the linear term.  
-If you look at the graph, you can see that the fixation proportion for the Target condition increased over time, whereas the fixation proportion for the Unrelated condition stayed around 0.2 (imagine a linear line on these plots).  
-This time-course difference was similar in L1 and L2 groups (no 3-way interaction, see `poly1:Condition1:Lang1`).  
+This suggests that the effect of condition (Target vs. Unrelated) interacts with the linear term.  
+If you look at the graph, you can see that the fixation proportion for the Target condition increases over time, whereas the fixation proportion for the Unrelated condition stays around 0.2 (imagine a linear line on these plots).  
+This time-course difference is similar in L1 and L2 groups (no 3-way interaction, see `poly1:Condition1:Lang1`).  
 
 ---
 
-Additionally, there were significant 2-way interactions of `Condition1:Lang1` and `Condition2:Lang1` on the intercept term and significant 3-way interactions of `poly2:Condition1:Lang1` and `poly2:Condition2:Lang1`.   
+Additionally, there are significant 2-way interactions of `Condition1:Lang1` and `Condition2:Lang1` on the intercept term and significant 3-way interactions of `poly2:Condition1:Lang1` and `poly2:Condition2:Lang1`.   
 
 We can resolve these interactions by running the model separately for each group.  
 
@@ -201,18 +201,17 @@ fix.binom.pred.m.cond.L2 = glmer(Count ~ (poly1+poly2) * Condition + (1|Subject)
 summary(fix.binom.pred.m.cond.L2)
 ```
 
-We can see that there is a significant effect of `Condition1` in both groups, but the effect is larger in the L1 group than in the L2 group. Thus, both L1 and L2 groups were more likely to look at the target object over the unrelated object, but this effect was larger in the L1 group than in the L2 group  
+We can see that there is a significant effect of `Condition1` in both groups, but the effect is larger in the L1 group than in the L2 group. Thus, both L1 and L2 groups were more likely to look at the target object over the unrelated object, but this difference was larger in the L1 group than in the L2 group.    
 
 The effect of `Condition2` is significant in the L1 group but not in the L2 group. Thus, the L1 group was more likely to look at the English competitor object over the unrelated object, but the L2 group was not.  
 
-Now, to the 3-way interactions of `poly2:Condition1:Lang1` and `poly2:Condition2:Lang1`.  
-The `poly2:Condition1` interaction is significant in both groups. That is, the curvature for the Target condition is different from that for the Unrelated condition in both groups. The curvature is shallower for the Unrelated condition in the L1 group, whereas it is shallower for the Target condition in the L2 group.
+Moving on to the 3-way interactions of `poly2:Condition1:Lang1` and `poly2:Condition2:Lang1`, we see that the `poly2:Condition1` interaction is significant in both groups. That is, the curvature for the Target condition is different from that for the Unrelated condition in both groups. The curvature is shallower for the Unrelated condition in the L1 group, whereas it is shallower for the Target condition in the L2 group.
 
-The `poly2:Condition2` interaction is significant in the L1 group. The curvature is shallower for the Unrelated condition compared to the English competitor condition. There was no such difference in the L2 group. 
+The `poly2:Condition2` interaction is significant in the L1 group. The curvature is shallower for the Unrelated condition compared to the English competitor condition. There is no such difference in the L2 group. 
 
 ## Evaluate the need for higher-order polynomial(s)
 
-In the previous section, we fitted the model including linear and quadratic terms.  
+In the previous section, we fitted the model with linear and quadratic terms.  
 Let's check if the model with linear and quadratic terms is better than the model without a quadratic term.  
 
 To do so, we need to construct another model without a quadratic term.  
@@ -281,7 +280,7 @@ fix.binom.pred.m.cond.L1 = glmer(Count ~ (poly1+poly2) * Condition + (1|Subject)
 
 Let's assume (hypothetically) you have another dependent variable `logFix` in the `fix.binom.50bin` dataset, which is a log-transformed fixation proportion, and you want to test whether `logFix` is significantly different between the target vs. unrelated conditions and between the English competitor vs. unrelated conditions in L1 speakers in the time window from -800 to 200 ms relative to the target word onset. You also want to include a cubic term in the model, in addition to the linear and quadratic terms.    
 
-Write a code for this analysis. Click `Solution` to see the solution.  
+Write a code for this analysis (but don't run it). Click `Solution` to see the solution.  
 
 ```{r GCA_prac, exercise=TRUE, exercise.lines=15}
 

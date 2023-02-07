@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Set-up
 
-Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+Load the following packages. If you haven't installed them yet, do so first (e.g. `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command: `remotes::install_github("aineito/stats.VWP")`.
 ```{r eval=T, echo=T, message=F}
 require(learnr)
 require(Rmisc)
@@ -21,10 +21,12 @@ require(ggplot2)
 require(ggnewscale)
 require(stats.VWP)
 require(permutes)
+require(buildmer)
+require(permuco)
 ```
 
 For the cluster-based permutation analysis, we will use `exchanger` and `clusterperm` packages.  
-Install the packages using the commands below. (If you already have installed them, you can skip this step.)  
+Install the packages using the commands below (If you already have installed them, you can skip this step).  
 ```{r eval=F, echo=T, message=F}
 remotes::install_github(c("dalejbarr/exchangr", "dalejbarr/clusterperm"))
 ```
@@ -35,8 +37,8 @@ require(exchangr)
 require(clusterperm)
 ```
 
-This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
-If you like the latter format, skip the command below.
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g. 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the indices format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
 ```
@@ -66,7 +68,7 @@ Item          |Item ID
 Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
 
 
-You can also see the help page to get the details of the variables.
+The details/description of the variables can also be found in the help page.  
 ```{r eval=F, echo=T, message=F}
 ?fix.50bin
 ```
@@ -75,7 +77,7 @@ We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent v
 
 The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
 
-For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+For this data, we will exclude blink samples and off-screen samples (i.e. `N = allSample - BlinkCount - OffScreenCount`).
 
 ```{r eval=T, echo=T, message=F}
 fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
@@ -113,7 +115,7 @@ fix.plot
 Before we run the cluster-based permutation analysis, let's look at what we get if we run multiple tests (the same test for each time bin).  
 
 Here, we'll run a by-subject analysis. For that, we will create a by-subject summary of the data.  
-For a by-item analysis, you will just need to replace `Subject` with `Item.`  
+If you want to run a by-item analysis, you will just need to replace `Subject` with `Item`.  
 
 ```{r eval=T, echo=T, message=F}
 fix.50bin.subj.summary = Rmisc::summarySE(fix.50bin, measurevar='elogFix', groupvars=c('Subject','Lang','Condition','Time'))
@@ -141,7 +143,7 @@ The output is a data frame containing signed F statistics and p values for each 
 Targ.Unr.L1.uncorrected
 ```
 
-We can subset the data and get the time bins in which the effect of Condition was significant. 
+We can subset the data and get the time bins in which the effect of Condition is significant. 
 ```{r eval=T, echo=T, message=F}
 Targ.Unr.L1.uncorrected %>% filter(p < .05)
 ```
@@ -162,7 +164,7 @@ Targ.Unr.L2.uncorrected %>% filter(p < .05)
 
 What do we get if we apply the Bonferroni correction?  
 
-**Note:** This is not a part of the analysis. This is just demonstrating what you get if you use Bonferroni correction instead of the cluster-based permutation analysis.  
+**Note:** This is not a part of the analysis. This is just demonstrating what you will get if you use Bonferroni correction instead of the cluster-based permutation analysis.  
 
 **Quick Q:** What happens to the p-values if you apply the Bonferroni correction?
 
@@ -222,7 +224,7 @@ We will do the same for the L2 group data.
 
 Now we will generate permutation null hypothesis distributions for `Condition` 
 We will set the number of permutation (monte carlo runs) `nmc` to 100 in the tutorial (to save time), but in reality, you should set it to a larger value (1000 or 2000).  
-Note: The `L` after the number forces R to treat the number as integer (instead of the default 'double', i.e., double precision floating point number). 
+Note: The `L` after the number forces R to treat the number as integer (instead of the default 'double', i.e. double precision floating point number). 
 
 **L1 group**
 ```{r eval=F, echo=T, message=F}
@@ -289,7 +291,7 @@ contrasts(cpa.lme.L1.TU$Condition) = contr.sum(2)
 contrasts(cpa.lme.L2.TU$Condition) = contr.sum(2) 
 ```
 
-In this tutorial, we will use the package `permutes` and run the analysis based on a linear mixed-effects model. If we want to use a generalised linear-mixed effects model instead, we can replace the function `clusterperm.lmer` with `clusterperm.glmer` 
+In this tutorial, we will use the package `permutes` and run the analysis based on a linear mixed-effects model. If we want to use a generalised linear-mixed effects model instead, we can replace the function `clusterperm.lmer` with `clusterperm.glmer`.  
 
 We will set the number of permutation to 100 in the tutorial (to save time), but in reality, you should set it to a larger value (1000 or 2000).  
 
@@ -355,7 +357,7 @@ Note: The answer choices are general statements and are not related to the data 
 ## Exercises
 
 **Exercise 1:**
-In the tutorial of the cluster-based permutation analysis based on ANOVA, we compared the target vs. unrelated conditions. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), compare the fixation proportion to the target between L1 and L2 speakers. Write a code to run a by-subject analysis with 1000 permutations (but don't actually run it because it will take a long time). Start with creating the dependent variable `elogFix`.   
+In the tutorial of the cluster-based permutation analysis based on ANOVA, we compared the target vs. unrelated conditions. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), compare the fixation proportion to the target between L1 and L2 speakers. Write a code to run a by-subject analysis with 1000 permutations (but don't run it). Start with creating the dependent variable `elogFix`.   
 
 Click `Solution` to see the solution.  
 
@@ -391,7 +393,7 @@ cpa.lme.L1.res = permutes::clusterperm.lmer(elogFix ~ Condition + (1|Subject) + 
 
 Based on the above code, write a code for a cluster-based permutation analysis based on **a generalised linear mixed-effects model** to test the same question but including by-subject and by-item random slopes for condition, as well as by-subject and by-item random intercepts. Assume we have a column with a dependent variable `binomFix` (binomially coded fixation, 1 = fixated, 0 = not fixated)  
 
-Click `Solution` to see the solution (Do not run the code - it may take a very long time).  
+Click `Solution` to see the solution (but don't run the code).  
 
 ```{r CPA_prac2, exercise=TRUE, exercise.lines=5}
 

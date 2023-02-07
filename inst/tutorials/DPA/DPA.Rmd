@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## Set-up
 
-Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+Load the following packages. If you haven't installed them yet, do so first (e.g. `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command: `remotes::install_github("aineito/stats.VWP")`.
 ```{r eval=T, echo=T, message=F}
 require(learnr)
 require(Rmisc)
@@ -22,8 +22,8 @@ require(boot)
 require(stats.VWP)
 ```
 
-This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
-If you like the latter format, skip the command below.
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g. 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the indices format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
 ```
@@ -50,7 +50,7 @@ Item          |Item ID
 Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
 
 
-You can also see the help page to get the details of the variables.  
+The details/description of the variables can also be found in the help page.  
 ```{r eval=F, echo=T, message=F}
 ?fix.binom.20bin
 ```
@@ -89,7 +89,7 @@ p1 = ggplot() +
   scale_linetype_manual('Condition', breaks=c('Targ','Unr'), labels=c("Target","Unrelated"), values=c('longdash','dotted')) +
   
   scale_x_continuous(limits=c(-1000,1000), expand=c(0,0), breaks=seq(-1000,1000,500)) +
-  scale_y_continuous(limits=c(-.05,1), expand=c(0,0), breaks=seq(0,1,.25)) +
+  scale_y_continuous(limits=c(0,1), expand=c(0,0), breaks=seq(0,1,.25)) +
   
   facet_wrap(vars(Lang), nrow = 2) +
   
@@ -103,7 +103,7 @@ p1
 
 ## Prepare the data
 
-We will select the time window for the analysis. The time window should be large enough to capture a divergence point, but it should not include time bins with very few observations. It may be impossible to perform a statistical analysis (e.g., t-test) on such data. We will choose the time from -800 ms relative to the target word onset.  
+We will select the time window for the analysis. The time window should be large enough to capture a divergence point, but it should not include time bins with very few observations. It may be impossible to perform a statistical analysis (e.g. t-test) on such data. We will choose the time from -800 ms relative to the target word onset.  
 
 The commands below will also create a stratification variable. Data resampling will be performed within this variable. In this case, data will be resampled within subject, condition and time. This variable should be treated as a factor.   
 ```{r eval=T, echo=T, message=F}
@@ -186,7 +186,7 @@ We got a t-value for each time bin:
 head(test_g1)
 ```
 
-We'll then create a vector, indicating whether the effect was significant (TRUE) or not (FALSE)
+We'll then create a vector, indicating whether the effect was significant (TRUE) or not (FALSE).  
 ```{r eval=T, echo=T, message=F}
 (t_g1 = test_g1$t > 1.96)
 ```
@@ -260,7 +260,7 @@ We will now compute a confidence interval in milliseconds.
 The `boot` package has a couple of functions for computing confidence intervals 
 (CIs), the main one being `boot.ci()`. Within the `boot.ci()` function, you can 
 choose which type of interval is appropriate to your data using the `type` argument.
-See the references under ?boot.ci for how to decide which is the most appropriate.
+See the references under the help page (`?boot.ci`) for how to decide which is the most appropriate.
 For normally distributed bootstrap distributions, the "percentile" is the simplest.  
 (from Stone et al., 2020)  
 
@@ -361,7 +361,7 @@ boot_L1L2_pval = function(original_data, resample_indices){
 
 ```
 
-Run the bootstrap   
+Run the bootstrap:  
 ```{r eval=T, echo=T, message=F}
 bootres_L1L2_pval = boot::boot(
   data = div.dat,  # data set to bootstrap       
@@ -370,7 +370,7 @@ bootres_L1L2_pval = boot::boot(
   R = Niter)  # number of iterations          
 ```
 
-Compute the p-value
+Compute the p-value:  
 ```{r eval=T, echo=T, message=F}
 round(mean(bootres_L1L2_pval$t[,1]>=bootres_L1L2$t0[1], na.rm=T), 3)        
 ```
@@ -458,7 +458,7 @@ boot_L1L2 = function(original_data, resample_indices){
 
 **Exercise 2:**  
 
-We ran the code below to get CIs for the L1 group. If we had used a time window from -500 ms to 200 ms and each bin contained 50 ms data, how should we change the code?
+We ran the code below to get CIs for the L1 group. If we had used a time window from -500 ms to 200 ms and each bin contained 50 ms data, how should we change the code?  
 ```{r DPA_prac2, exercise=TRUE, exercise.lines=4}
 (boot::boot.ci(bootres_L1L2, index=2, type="perc")$percent[4:5]-1)*20-800
 ```

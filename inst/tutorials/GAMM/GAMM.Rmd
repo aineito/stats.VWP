@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Set-up
 
-Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+Load the following packages. If you haven't installed them yet, do so first (e.g. `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command: `remotes::install_github("aineito/stats.VWP")`.
 
 ```{r eval=T, message=F}
 require(learnr)
@@ -23,8 +23,8 @@ require(itsadug)
 require(stats.VWP)
 ```
 
-This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
-If you like the latter format, skip the command below.
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g. 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the indices format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
 ```
@@ -54,7 +54,7 @@ Item          |Item ID
 Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
 
 
-You can also see the help page to get the details of the variables.
+The details/description of the variables can also be found in the help page.  
 ```{r eval=F, echo=T, message=F}
 ?fix.50bin
 ```
@@ -68,7 +68,7 @@ We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent v
 
 The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
 
-For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+For this data, we will exclude blink samples and off-screen samples (i.e. `N = allSample - BlinkCount - OffScreenCount`).
 
 We will also mark the first time bin for each trial. We create a new column `Is_start` and set the value to TRUE for the first time bin.  
 
@@ -90,6 +90,7 @@ ggplot() +
   labs(y="Fixation Proportion", x="Time relative to the target word onset (ms)") + 
   
   scale_x_continuous(limits=c(-1000,950),expand=c(0,0),breaks=seq(-500, 500, 500)) +
+  scale_y_continuous(limits=c(0,1),expand=c(0,0)) +
   scale_color_manual('Condition', values=c("red","darkgrey")) +
   scale_fill_manual('Condition', values=c("red","darkgrey")) +
   scale_linetype_manual('Condition', values=c("solid","dotted")) +
@@ -128,7 +129,7 @@ gamm.base.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, S
 gamm.base.L2 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data = fix.L2dat)
 ```
 
-The warning "model has repeated 1-d smooths of same variable" tells us that we have smooths over time both in random effects and fixed effects. That is fine, so we can ignore this warning.  
+The warning "model has repeated 1-d smooths of same variable" tells us that we have smooths over time both in random effects and fixed effects. We can ignore this warning.  
 
 ```{r eval=T, echo=T, message=F}
 summary(gamm.base.L1)
@@ -148,14 +149,7 @@ gamm.main.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, S
 gamm.main.L2 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L2dat, rho=rho.L2, AR.start=Is_start)
 ```
 
-## Visualise the residuals
-
-We will plot the residuals of the fitted model.  
-
-```{r eval=T, echo=T, message=F}
-mgcv::gam.check(gamm.main.L1) 
-mgcv::gam.check(gamm.main.L2) 
-```
+## Autocorrelation
 
 We can check if accounting for autocorrelation improves the models. The value on the y-axis of the second line (from the left) indicates the amount of autocorrelation at lag 1.
 
@@ -215,7 +209,7 @@ Modify the so that you will have a model testing the same effect but with a diff
 
 Remember, random effects are not specified in the same way as in LME. Check the `Fit the models` section again if you need to review how to specify random effects in GAMM.  
 
-Click `Solution` to see the solution.  
+Click `Solution` to see the solution. Don't run the code.    
 
 ```{r GAMM_prac, exercise=TRUE, exercise.lines=15}
 gamm.main.L1 = mgcv::bam(elogFix ~ Condition + s(Time, by=Condition) + s(Time, Subject, by=Condition, bs="fs", m=1) + s(Time, Item, by=Condition, bs="fs", m=1), data=fix.L1dat, rho=rho.L1, AR.start=Is_start)

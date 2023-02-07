@@ -17,7 +17,7 @@ For a successful application, please refer to vignettes that comes with the `bdo
 
 ## Set-up
 
-Load the following packages. If you haven't installed them yet, do so first (e.g., `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command `remotes::install_github("aineito/stats.VWP")`.
+Load the following packages. If you haven't installed them yet, do so first (e.g. `install.packages("learnr")`). If you haven't installed the `stats.VWP` package (course materials) yet, install it using this command: `remotes::install_github("aineito/stats.VWP")`.
 ```{r eval=T, echo=T, message=F}
 require(learnr)
 require(Rmisc)
@@ -27,8 +27,8 @@ require(bdots)
 require(stats.VWP)
 ```
 
-This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g., 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
-If you like the latter format, skip the command below.
+This is optional: If you run the command below, R will display very large or very small numbers in a plain format (e.g. 100000 instead of 1e+05, 0.000001 instead of 1e-06).  
+If you like the indices format, skip the command below.
 ```{r eval=T, echo=T, message=F}
 options(scipen=999)
 ```
@@ -58,7 +58,7 @@ Item          |Item ID
 Lang          |Language group (L1=native English speakers, L2=native Japanese, non-native English speakers)
 
 
-You can also see the help page to get the details of the variables.
+The details/description of the variables can also be found in the help page.  
 ```{r eval=F, echo=T, message=F}
 ?fix.50bin
 ```
@@ -67,7 +67,7 @@ We will use the empirical logit `elogFix` (cf. Barr, 2008, JML) as a dependent v
 
 The formula to compute the empirical logit is: `log( (Y+.5) / (N-Y+.5) )` where `Y` is the total number of samples that fall in the critical interest area, and `N` is the total number of samples for the current bin.  
 
-For this data, we will exclude blink samples and off-screen samples (i.e., `N = allSample - BlinkCount - OffScreenCount`).
+For this data, we will exclude blink samples and off-screen samples (i.e. `N = allSample - BlinkCount - OffScreenCount`).
 
 ```{r eval=T, echo=T, message=F}
 fix.50bin = fix.50bin %>% mutate(elogFix = log((Count+.5)/(allSample-BlinkCount-OffScreenCount-Count+.5)))
@@ -92,6 +92,7 @@ ggplot() +
   labs(y="Fixation Proportion", x="Time relative to the target word onset (ms)") + 
   
   scale_x_continuous(limits=c(-1000,950), expand=c(0,0), breaks=seq(-750, 750, 250)) +
+  scale_y_continuous(limits=c(0,.7), expand=c(0,0)) +
   scale_color_manual('Lang', values=c("blue","deeppink")) +
   scale_fill_manual('Lang', values=c("blue","deeppink")) +
   scale_linetype_manual('Lang', values=c("solid","dotted")) +
@@ -119,7 +120,7 @@ We use a 4-parameter logistic `logistic()` for the curve-fitting, as we are anal
 subj.fit = bdots::bdotsFit(data=subj.dat, subject="Subject", time="Time", y="elogFix", group="Lang", curveType=logistic())
 ```
 
-It is important to visualise the curve-fitting outcome and compare fitted curves with empirical data, because the results may be inaccurate if the curves are not reasonably fit.    
+It is important to visualise the curve-fitting outcome and compare the fitted curves with empirical data, because the results may be inaccurate if the curves are not reasonably fitted.    
 
 ```{r eval=T, echo=T, message=F, fig.height=6}
 plot(subj.fit)
@@ -139,7 +140,7 @@ A `fitCode` of 1 indicates a reasonably good fit (R2 >= .8), and a `fitCode` of 
 
 ## Re-fit curves
 
-We will see if re-fitting the curves improves the fitted curves. We use the `bdotsRefit` function for that. `fitCode` indicates lower bound on observations to refit. In the code below, we are refitting all observations with `fitCode` = 1, 2, 3, 4, 5 and 6 (i.e., everything).  
+We will now explore if re-fitting the curves improves the fitted curves. We will use the `bdotsRefit` function for that. `fitCode` indicates lower bound on observations to refit. In the code below, we will be refitting all observations with `fitCode` = 1, 2, 3, 4, 5 and 6 (i.e. everything).  
 
 ```{r eval=T, echo=T, message=F}
 refit = bdots::bdotsRefit(subj.fit, fitCode=1L, quickRefit=T)
@@ -175,7 +176,7 @@ Thus, when using BDOTS, it is important to ensure that the fitted curves explain
 
 ## Exercise
 
-In this tutorial, we wanted to compare the target fixation proportion between the L1 and L2 groups. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), write a code to fit curves to the English competitor fixation proportion and plot the fitted curves and observed data (don't actually run the code -  it will produce an error). Start with creating the dependent variable `elogFix`.     
+In this tutorial, we wanted to compare the target fixation proportion between the L1 and L2 groups. Using the same dataset `fix.50bin` and the same dependent variable (the empirical logit `elogFix`), write a code to fit curves to the English competitor fixation proportion and plot the fitted curves and observed data (don't run the code -  it will produce an error). Start with creating the dependent variable `elogFix`.     
 
 Click `Solution` to see the solution.  
 
