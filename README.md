@@ -29,10 +29,12 @@ Other required packages can be installed by running the code below.
 install.packages(c("Rmisc", "tidyverse", "ggplot2", "bdots", "ggnewscale", "permutes", "lme4", "boot", "mgcv", "itsadug", "buildmer", "permuco"))
 ```
 
+You will also need Rtools to open the tutorials. You can download it from here: <https://cran.r-project.org/bin/windows/Rtools/>  
+
 ## Tutorials
 
-You can launch tutorials by running the following commands.  
-Some of the tutorials may take some time to launch (~ 5 min.).  
+You can open tutorials by running the following commands.  
+Some of the tutorials may take some time to open (~ 5 min.).  
 
 ``` r
 learnr::run_tutorial("GCA", "stats.VWP") # Growth curve analysis
@@ -42,7 +44,7 @@ learnr::run_tutorial("GAMM", "stats.VWP") # Generalised additive modelling
 learnr::run_tutorial("DPA", "stats.VWP") # Divergence point analysis
 ```
 
-The tutorials below should still work, but they are a bit outdated and not maintained.  
+The tutorials below should still work, but they are a bit outdated and not being maintained.  
 
 ``` r
 learnr::run_tutorial("Session3", "stats.VWP") # visualising the data  
